@@ -1,0 +1,1351 @@
+{
+  "info": {
+    "name": "Tripline Auth + Payments API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Auth, wallet, payments, fleet admin, ride instances, and booking APIs."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "verifyToken",
+      "value": ""
+    },
+    {
+      "key": "resetVerifyToken",
+      "value": ""
+    },
+    {
+      "key": "paystackReference",
+      "value": ""
+    },
+    {
+      "key": "adminAccessToken",
+      "value": ""
+    },
+    {
+      "key": "routeId",
+      "value": ""
+    },
+    {
+      "key": "pickupPointId",
+      "value": ""
+    },
+    {
+      "key": "providerId",
+      "value": ""
+    },
+    {
+      "key": "vehicleId",
+      "value": ""
+    },
+    {
+      "key": "driverId",
+      "value": ""
+    },
+    {
+      "key": "driverVehicleAssignmentId",
+      "value": ""
+    },
+    {
+      "key": "driverRouteAssignmentId",
+      "value": ""
+    },
+    {
+      "key": "rideInstanceId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "manifestDate",
+      "value": "2026-02-16"
+    },
+    {
+      "key": "lat",
+      "value": "6.4300"
+    },
+    {
+      "key": "lng",
+      "value": "3.4500"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.verifyToken) {",
+                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Tola\",\n  \"lastName\": \"Okoro\",\n  \"email\": \"tola@example.com\",\n  \"phone\": \"+2348010000000\",\n  \"password\": \"Password123\",\n  \"role\": \"rider\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.verifyToken) {",
+                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/resend-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (Email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"otp\": \"1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data) {",
+                  "  pm.environment.set('accessToken', data.data.accessToken);",
+                  "  pm.environment.set('refreshToken', data.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tola@example.com\",\n  \"password\": \"Password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.verifyToken) {",
+                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tola@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (Reset)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.verifyToken) {",
+                  "  pm.environment.set('resetVerifyToken', data.data.verifyToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/verify-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"otp\": \"1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/reset-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"Password456\",\n  \"verifyToken\": \"{{resetVerifyToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data) {",
+                  "  pm.environment.set('accessToken', data.data.accessToken);",
+                  "  pm.environment.set('refreshToken', data.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Initiate Token Purchase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.reference) {",
+                  "  pm.environment.set('paystackReference', data.data.reference);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/payments/initiate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountNgn\": 100\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wallet"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paystack",
+      "item": [
+        {
+          "name": "Webhook (charge.success)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-paystack-signature",
+                "value": "{{paystackSignature}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/paystack/webhook",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"reference\": \"{{paystackReference}}\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Driver",
+      "item": [
+        {
+          "name": "Submit KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/driver/kyc",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"licenseNumber\": \"DL-1029\",\n  \"ninBvnNid\": \"NIN-909090\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Driver Manifest",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/drivers/me/manifest?date={{manifestDate}}"
+          }
+        },
+        {
+          "name": "Mark Booking Boarded/No Show",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/bookings/{{bookingId}}/board",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"BOARDED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Driver Location",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/drivers/location",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"lat\": {{lat}},\n  \"lng\": {{lng}},\n  \"driverOnline\": true\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Routes",
+      "item": [
+        {
+          "name": "List Routes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes"
+          }
+        },
+        {
+          "name": "Search Routes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/search?q=ajah"
+          }
+        },
+        {
+          "name": "Create Route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.id) { pm.environment.set(\"routeId\", data.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ajah -> VI Morning\",\n  \"fromName\": \"Ajah\",\n  \"fromLatitude\": 6.4698,\n  \"fromLongitude\": 3.5852,\n  \"toName\": \"Victoria Island\",\n  \"toLatitude\": 6.4281,\n  \"toLongitude\": 3.4219,\n  \"baseTokenCost\": 5,\n  \"status\": \"active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Route By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}"
+          }
+        },
+        {
+          "name": "Update Route",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"baseTokenCost\": 6,\n  \"status\": \"active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Route",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}"
+          }
+        },
+        {
+          "name": "List Pickup Points",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points"
+          }
+        },
+        {
+          "name": "Create Pickup Point",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json();",
+                  "if (!data.hasError && data.data && data.data.id) { pm.environment.set(\"pickupPointId\", data.data.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chevron\",\n  \"latitude\": 6.449,\n  \"longitude\": 3.534,\n  \"orderIndex\": 2,\n  \"tokenCost\": 4\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Pickup Point",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points/{{pickupPointId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tokenCost\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Pickup Point",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminAccessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points/{{pickupPointId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Fleet",
+      "item": [
+        {
+          "name": "Providers",
+          "item": [
+            {
+              "name": "List Providers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicle-providers"
+              }
+            },
+            {
+              "name": "Create Provider",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const data = pm.response.json();",
+                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('providerId', data.data.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicle-providers",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Swift Shuttle Ltd\",\n  \"contactName\": \"Ada N.\",\n  \"contactEmail\": \"ada@swiftshuttle.ng\",\n  \"contactPhone\": \"+2348011111111\",\n  \"status\": \"active\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Get Provider By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
+              }
+            },
+            {
+              "name": "Update Provider",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"contactPhone\": \"+2348022222222\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete Provider",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vehicles",
+          "item": [
+            {
+              "name": "List Vehicles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles"
+              }
+            },
+            {
+              "name": "Create Vehicle",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const data = pm.response.json();",
+                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('vehicleId', data.data.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"registrationNumber\": \"LSD-123XY\",\n  \"model\": \"Toyota Hiace\",\n  \"capacity\": 14,\n  \"status\": \"active\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Get Vehicle By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
+              }
+            },
+            {
+              "name": "Update Vehicle",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"maintenance\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Assign Provider To Vehicle",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}/assign-provider",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"providerId\": \"{{providerId}}\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Unassign Provider From Vehicle",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}/assign-provider",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"providerId\": null\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete Vehicle",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Drivers",
+          "item": [
+            {
+              "name": "List Drivers",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/drivers"
+              }
+            },
+            {
+              "name": "Create Driver",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const data = pm.response.json();",
+                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverId', data.data.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/drivers",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Kelechi\",\n  \"lastName\": \"Daniels\",\n  \"email\": \"kelechi.driver@example.com\",\n  \"phone\": \"+2348033333333\",\n  \"password\": \"Password123\",\n  \"status\": \"active\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Get Driver By Id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
+              }
+            },
+            {
+              "name": "Update Driver",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+2348044444444\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Delete Driver",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assignments",
+          "item": [
+            {
+              "name": "Assign Driver -> Vehicle",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const data = pm.response.json();",
+                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverVehicleAssignmentId', data.data.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleId\": \"{{vehicleId}}\"\n}"
+                }
+              }
+            },
+            {
+              "name": "End Driver -> Vehicle Assignment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle/{{driverVehicleAssignmentId}}/end"
+              }
+            },
+            {
+              "name": "Assign Driver -> Route",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const data = pm.response.json();",
+                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverRouteAssignmentId', data.data.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/assignments/driver-route",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"routeId\": \"{{routeId}}\"\n}"
+                }
+              }
+            },
+            {
+              "name": "End Driver -> Route Assignment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/assignments/driver-route/{{driverRouteAssignmentId}}/end"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rides & Bookings",
+      "item": [
+        {
+          "name": "Admin Ride Instances",
+          "item": [
+            {
+              "name": "Create Ride Instance",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (!res.hasError && res.data && res.data.id) pm.environment.set('rideInstanceId', res.data.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/ride-instances",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-02-16\",\n  \"departureTime\": \"06:30\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Create Ride Instances Bulk",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/ride-instances/bulk",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-02-16\",\n  \"departureTimes\": [\"06:30\", \"14:00\", \"17:30\"]\n}"
+                }
+              }
+            },
+            {
+              "name": "List Ride Instances",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/ride-instances?rideDate=2026-02-16"
+              }
+            },
+            {
+              "name": "Update Ride Instance",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"boarding\"\n}"
+                }
+              }
+            },
+            {
+              "name": "Cancel Ride Instance",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminAccessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rider Availability & Bookings",
+          "item": [
+            {
+              "name": "Route Availability By Date",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/routes/{{routeId}}/availability?date=2026-02-16"
+              }
+            },
+            {
+              "name": "Create Booking (Atomic Token Deduction)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (!res.hasError && res.data && res.data.bookingId) pm.environment.set('bookingId', res.data.bookingId);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/bookings",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
+                }
+              }
+            },
+            {
+              "name": "List Available Ride Instances",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/ride-instances?routeId={{routeId}}&rideDate=2026-02-16"
+              }
+            },
+            {
+              "name": "Lock Seat",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (!res.hasError && res.data && res.data.bookingId) pm.environment.set('bookingId', res.data.bookingId);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/bookings/lock",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
+                }
+              }
+            },
+            {
+              "name": "Confirm Booking",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm"
+              }
+            },
+            {
+              "name": "Cancel Booking",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel"
+              }
+            },
+            {
+              "name": "My Bookings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/bookings/me"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

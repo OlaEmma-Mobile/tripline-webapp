@@ -1,0 +1,45 @@
+import Image from 'next/image';
+import AdminBenefitsCarousel from '@/components/admin-benefits-carousel';
+
+export default function AdminAuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="mx-auto flex min-h-screen max-w-6xl items-stretch px-4 sm:px-6 lg:px-8">
+        <div className="grid w-full grid-cols-1 gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="order-2 flex items-center lg:order-1">
+            <div className="relative w-full overflow-hidden rounded-3xl border border-border bg-foreground/90">
+              <div className="absolute inset-0">
+                <Image
+                  src="/hero-bg.jpg"
+                  alt="Tripline admin console"
+                  fill
+                  className="object-cover"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-foreground/80 via-foreground/70 to-foreground/60" />
+              </div>
+              <div className="relative z-10 flex h-full min-h-[420px] flex-col justify-between p-8 sm:p-10">
+                <div className="space-y-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-white/70 font-mono">
+                    Admin Console
+                  </p>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-white font-mono">
+                    Operate Tripline with clarity
+                  </h1>
+                  <p className="text-sm text-white/70 font-sans">
+                    Keep teams on schedule with real-time oversight and reporting.
+                  </p>
+                </div>
+                <AdminBenefitsCarousel />
+              </div>
+            </div>
+          </section>
+
+          <section className="order-1 flex items-center lg:order-2">
+            <div className="w-full">{children}</div>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}

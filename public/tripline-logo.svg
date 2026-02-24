@@ -1,0 +1,11 @@
+<svg viewBox="0 0 512 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Logo icon mark -->
+  <rect x="0" y="15" width="146" height="20" fill="#2eab66"/>
+  <rect x="0" y="75" width="292" height="20" fill="#2eab66"/>
+  <rect x="0" y="135" width="292" height="20" fill="#2eab66"/>
+  <rect x="0" y="195" width="292" height="20" fill="#2eab66"/>
+  <rect x="145" y="255" width="258" height="20" fill="#2eab66"/>
+  
+  <!-- Text would go here in full logo -->
+  <text x="350" y="200" font-size="120" font-weight="bold" fill="#2eab66" font-family="Arial, sans-serif">Tripline</text>
+</svg>
