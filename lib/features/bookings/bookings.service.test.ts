@@ -8,6 +8,8 @@ const baseBooking: BookingRecord = {
   id: 'booking-1',
   ride_instance_id: 'ride-1',
   rider_id: 'rider-1',
+  pickup_point_id: null,
+  token_cost: 0,
   status: 'booked',
   seat_count: 1,
   seat_number: null,

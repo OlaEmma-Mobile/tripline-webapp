@@ -14,6 +14,7 @@ export const lockSeatSchema = z.object({
  */
 export const createBookingSchema = z.object({
   rideInstanceId: z.string().uuid('Ride instance id must be a valid UUID'),
+  pickupPointId: z.string().uuid('Pickup point id must be a valid UUID'),
   seatCount: z
     .number()
     .int('Seat count must be an integer')

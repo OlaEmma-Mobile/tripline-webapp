@@ -1,8 +1,9 @@
 {
   "info": {
+    "_postman_id": "6f9f7f0c-2f39-47f9-bd57-3e4c778d9a27",
     "name": "Tripline Auth + Payments API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auth, wallet, payments, fleet admin, ride instances, and booking APIs."
+    "description": "Comprehensive Tripline API collection with endpoint-level documentation. Includes auth, bookings, rides, fleet/admin operations, settings, tokens, payments, and realtime-related endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
@@ -18,19 +19,11 @@
       "value": ""
     },
     {
+      "key": "adminRefreshToken",
+      "value": ""
+    },
+    {
       "key": "verifyToken",
-      "value": ""
-    },
-    {
-      "key": "resetVerifyToken",
-      "value": ""
-    },
-    {
-      "key": "paystackReference",
-      "value": ""
-    },
-    {
-      "key": "adminAccessToken",
       "value": ""
     },
     {
@@ -42,7 +35,15 @@
       "value": ""
     },
     {
-      "key": "providerId",
+      "key": "rideInstanceId",
+      "value": ""
+    },
+    {
+      "key": "bookingId",
+      "value": ""
+    },
+    {
+      "key": "driverId",
       "value": ""
     },
     {
@@ -50,7 +51,11 @@
       "value": ""
     },
     {
-      "key": "driverId",
+      "key": "providerId",
+      "value": ""
+    },
+    {
+      "key": "userId",
       "value": ""
     },
     {
@@ -62,45 +67,49 @@
       "value": ""
     },
     {
-      "key": "rideInstanceId",
+      "key": "paystackReference",
       "value": ""
     },
     {
-      "key": "bookingId",
+      "key": "from",
       "value": ""
     },
     {
-      "key": "manifestDate",
-      "value": "2026-02-16"
+      "key": "to",
+      "value": ""
     },
     {
-      "key": "lat",
-      "value": "6.4300"
+      "key": "date",
+      "value": ""
     },
     {
-      "key": "lng",
-      "value": "3.4500"
+      "key": "status",
+      "value": ""
+    },
+    {
+      "key": "q",
+      "value": ""
+    },
+    {
+      "key": "page",
+      "value": "1"
+    },
+    {
+      "key": "limit",
+      "value": "100"
+    },
+    {
+      "key": "companyId",
+      "value": ""
     }
   ],
   "item": [
     {
       "name": "Auth",
+      "description": "Public authentication endpoints for rider/driver login, registration, OTP verification, password reset, and token refresh.\nAll responses use: { hasError, data, message, description, errors }.",
       "item": [
         {
           "name": "Register",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.verifyToken) {",
-                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -109,6 +118,7 @@
                 "value": "application/json"
               }
             ],
+            "description": "Create rider/driver account and trigger OTP verification.",
             "url": "{{baseUrl}}/api/auth/register",
             "body": {
               "mode": "raw",
@@ -117,68 +127,7 @@
           }
         },
         {
-          "name": "Resend OTP",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.verifyToken) {",
-                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/auth/resend-otp",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Verify OTP (Email)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/auth/verify-otp",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"otp\": \"1234\"\n}"
-            }
-          }
-        },
-        {
           "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data) {",
-                  "  pm.environment.set('accessToken', data.data.accessToken);",
-                  "  pm.environment.set('refreshToken', data.data.refreshToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
@@ -187,6 +136,7 @@
                 "value": "application/json"
               }
             ],
+            "description": "Login and receive access/refresh tokens.",
             "url": "{{baseUrl}}/api/auth/login",
             "body": {
               "mode": "raw",
@@ -195,20 +145,7 @@
           }
         },
         {
-          "name": "Forgot Password",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.verifyToken) {",
-                  "  pm.environment.set('verifyToken', data.data.verifyToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
+          "name": "Verify OTP",
           "request": {
             "method": "POST",
             "header": [
@@ -217,40 +154,47 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/auth/forgot-password",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"tola@example.com\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Verify OTP (Reset)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.verifyToken) {",
-                  "  pm.environment.set('resetVerifyToken', data.data.verifyToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "description": "Verify OTP for email verification or reset flow.",
             "url": "{{baseUrl}}/api/auth/verify-otp",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"otp\": \"1234\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Resend OTP using existing verify token.",
+            "url": "{{baseUrl}}/api/auth/resend-otp",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Start reset flow and receive verify token.",
+            "url": "{{baseUrl}}/api/auth/forgot-password",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tola@example.com\"\n}"
             }
           }
         },
@@ -264,29 +208,16 @@
                 "value": "application/json"
               }
             ],
+            "description": "Reset password after OTP verification.",
             "url": "{{baseUrl}}/api/auth/reset-password",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"newPassword\": \"Password456\",\n  \"verifyToken\": \"{{resetVerifyToken}}\"\n}"
+              "raw": "{\n  \"newPassword\": \"NewPassword123\",\n  \"verifyToken\": \"{{verifyToken}}\"\n}"
             }
           }
         },
         {
-          "name": "Refresh Token",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data) {",
-                  "  pm.environment.set('accessToken', data.data.accessToken);",
-                  "  pm.environment.set('refreshToken', data.data.refreshToken);",
-                  "}"
-                ]
-              }
-            }
-          ],
+          "name": "Refresh Session",
           "request": {
             "method": "POST",
             "header": [
@@ -295,6 +226,7 @@
                 "value": "application/json"
               }
             ],
+            "description": "Rotate refresh token and issue new access token.",
             "url": "{{baseUrl}}/api/auth/refresh",
             "body": {
               "mode": "raw",
@@ -305,40 +237,85 @@
       ]
     },
     {
-      "name": "Payments",
+      "name": "Admin Auth",
+      "description": "Admin/sub_admin authentication endpoints. Use these tokens for /api/admin/* endpoints.",
       "item": [
         {
-          "name": "Initiate Token Purchase",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.reference) {",
-                  "  pm.environment.set('paystackReference', data.data.reference);",
-                  "}"
-                ]
-              }
-            }
-          ],
+          "name": "Admin Login",
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "description": "Login admin/sub_admin and receive admin tokens.",
+            "url": "{{baseUrl}}/api/admin/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Refresh admin session tokens.",
+            "url": "{{baseUrl}}/api/admin/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{adminRefreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create admin/sub_admin account (admin only).",
+            "url": "{{baseUrl}}/api/admin/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Admin\",\n  \"lastName\": \"User\",\n  \"email\": \"newadmin@example.com\",\n  \"phone\": \"+2348010000001\",\n  \"password\": \"Password123\",\n  \"role\": \"sub_admin\",\n  \"status\": \"active\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile & Wallet",
+      "description": "Authenticated profile and wallet endpoints.",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/payments/initiate",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"amountNgn\": 100\n}"
-            }
+            "description": "Return authenticated user profile and status flags.",
+            "url": "{{baseUrl}}/api/users/me"
           }
         },
         {
@@ -351,28 +328,55 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "Return authenticated wallet balance and credit state.",
             "url": "{{baseUrl}}/api/wallet"
           }
         }
       ]
     },
     {
-      "name": "Paystack",
+      "name": "Payments",
+      "description": "Token purchase and payment initiation endpoints.",
       "item": [
         {
-          "name": "Webhook (charge.success)",
+          "name": "Initiate Payment",
           "request": {
             "method": "POST",
             "header": [
               {
-                "key": "x-paystack-signature",
-                "value": "{{paystackSignature}}"
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "description": "Create pending token purchase and initialize Paystack transaction.",
+            "url": "{{baseUrl}}/api/payments/initiate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountNgn\": 1000\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Paystack",
+      "description": "Paystack webhook endpoint for payment verification and wallet crediting.",
+      "item": [
+        {
+          "name": "Paystack Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Receive Paystack events (charge.success etc). Public endpoint, signature-verified server-side.",
             "url": "{{baseUrl}}/api/paystack/webhook",
             "body": {
               "mode": "raw",
@@ -383,31 +387,83 @@
       ]
     },
     {
-      "name": "Driver",
+      "name": "Bookings",
+      "description": "Rider booking lifecycle endpoints including lock, confirm, cancel, and driver boarding updates.",
       "item": [
         {
-          "name": "Submit KYC",
+          "name": "Create Booking",
           "request": {
             "method": "POST",
             "header": [
               {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
+              }
+            ],
+            "description": "Create booking and deduct tokens atomically.",
+            "url": "{{baseUrl}}/api/bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"pickupPointId\": \"{{pickupPointId}}\",\n  \"seatCount\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Lock Seat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create pending seat lock with TTL via DB RPC.",
+            "url": "{{baseUrl}}/api/bookings/lock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Confirm Booking",
+          "request": {
+            "method": "POST",
+            "header": [
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/driver/kyc",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"driver@example.com\",\n  \"licenseNumber\": \"DL-1029\",\n  \"ninBvnNid\": \"NIN-909090\"\n}"
-            }
+            "description": "Confirm locked booking.",
+            "url": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm"
           }
         },
         {
-          "name": "Get Driver Manifest",
+          "name": "Cancel Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Cancel booking by rider.",
+            "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel"
+          }
+        },
+        {
+          "name": "My Bookings",
           "request": {
             "method": "GET",
             "header": [
@@ -416,55 +472,169 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/drivers/me/manifest?date={{manifestDate}}"
+            "description": "List current authenticated rider bookings.",
+            "url": "{{baseUrl}}/api/bookings/me"
           }
         },
         {
-          "name": "Mark Booking Boarded/No Show",
+          "name": "Driver Board/No-Show",
           "request": {
             "method": "PATCH",
             "header": [
               {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
+            "description": "Driver marks booking as BOARDED or NO_SHOW.",
             "url": "{{baseUrl}}/api/bookings/{{bookingId}}/board",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"action\": \"BOARDED\"\n}"
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Ride Instances",
+      "description": "Public rider-facing route availability and ride instance listing endpoints.",
+      "item": [
         {
-          "name": "Update Driver Location",
+          "name": "List Ride Instances",
           "request": {
-            "method": "PATCH",
+            "method": "GET",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "List ride instances by route/date for riders.",
+            "url": "{{baseUrl}}/api/ride-instances?routeId={{routeId}}&rideDate={{rideDate}}"
+          }
+        },
+        {
+          "name": "Route Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get route availability snapshot for date.",
+            "url": "{{baseUrl}}/api/routes/{{routeId}}/availability?date={{date}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Drivers",
+      "description": "Driver-specific operational endpoints including manifests and live location updates.",
+      "item": [
+        {
+          "name": "Driver Manifest (Self)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get authenticated driver daily manifest.",
+            "url": "{{baseUrl}}/api/drivers/me/manifest?date={{date}}"
+          }
+        },
+        {
+          "name": "Driver Manifest (By ID)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get manifest by driver id (driver can only access own; admin permitted by policy).",
+            "url": "{{baseUrl}}/api/drivers/{{driverId}}/manifest?date={{date}}"
+          }
+        },
+        {
+          "name": "Driver Location Update",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update realtime driver location for a ride instance.",
             "url": "{{baseUrl}}/api/drivers/location",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"lat\": {{lat}},\n  \"lng\": {{lng}},\n  \"driverOnline\": true\n}"
+              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"lat\": 6.43,\n  \"lng\": 3.45,\n  \"driverOnline\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Driver KYC Submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Submit/refresh driver KYC payload.",
+            "url": "{{baseUrl}}/api/driver/kyc",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nin\": \"12345678901\",\n  \"licenseNumber\": \"DRV-12345\",\n  \"address\": \"No 1, Lekki\"\n}"
             }
           }
         }
       ]
     },
     {
+      "name": "Admin Dashboard",
+      "description": "Admin operations summary metrics, alerts, and upcoming rides.",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get metrics, upcoming rides, and alerts for date range.",
+            "url": "{{baseUrl}}/api/admin/dashboard?from={{from}}&to={{to}}"
+          }
+        }
+      ]
+    },
+    {
       "name": "Admin Routes",
+      "description": "Admin fixed-route management: CRUD, search, pickup points, and reorder.",
       "item": [
         {
           "name": "List Routes",
@@ -473,10 +643,33 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/admin/routes"
+            "description": "Paginated route list.",
+            "url": "{{baseUrl}}/api/admin/routes?page={{page}}&limit={{limit}}&status={{status}}&companyId={{companyId}}"
+          }
+        },
+        {
+          "name": "Create Route",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create fixed route with from/to coordinates and pricing.",
+            "url": "{{baseUrl}}/api/admin/routes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lekki - VI\",\n  \"fromName\": \"Lekki Phase 1\",\n  \"fromLatitude\": 6.44,\n  \"fromLongitude\": 3.52,\n  \"toName\": \"Victoria Island\",\n  \"toLatitude\": 6.43,\n  \"toLongitude\": 3.42,\n  \"baseTokenCost\": 5,\n  \"status\": \"active\"\n}"
+            }
           }
         },
         {
@@ -486,54 +679,24 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/admin/routes/search?q=ajah"
+            "description": "Dynamic route search by route fields and pickup point names.",
+            "url": "{{baseUrl}}/api/admin/routes/search?q={{q}}&status={{status}}&companyId={{companyId}}&limit={{limit}}"
           }
         },
         {
-          "name": "Create Route",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.id) { pm.environment.set(\"routeId\", data.data.id); }"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/admin/routes",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Ajah -> VI Morning\",\n  \"fromName\": \"Ajah\",\n  \"fromLatitude\": 6.4698,\n  \"fromLongitude\": 3.5852,\n  \"toName\": \"Victoria Island\",\n  \"toLatitude\": 6.4281,\n  \"toLongitude\": 3.4219,\n  \"baseTokenCost\": 5,\n  \"status\": \"active\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Get Route By Id",
+          "name": "Get Route",
           "request": {
             "method": "GET",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "Get route details and pickup points.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}"
           }
         },
@@ -544,17 +707,18 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "description": "Update route fields or status.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"baseTokenCost\": 6,\n  \"status\": \"active\"\n}"
+              "raw": "{\n  \"status\": \"inactive\"\n}"
             }
           }
         },
@@ -565,9 +729,10 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "Delete route (fails if referenced).",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}"
           }
         },
@@ -578,41 +743,32 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "List ordered pickup points for route.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points"
           }
         },
         {
           "name": "Create Pickup Point",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "const data = pm.response.json();",
-                  "if (!data.hasError && data.data && data.data.id) { pm.environment.set(\"pickupPointId\", data.data.id); }"
-                ]
-              }
-            }
-          ],
           "request": {
             "method": "POST",
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "description": "Create pickup point with order and token cost.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Chevron\",\n  \"latitude\": 6.449,\n  \"longitude\": 3.534,\n  \"orderIndex\": 2,\n  \"tokenCost\": 4\n}"
+              "raw": "{\n  \"name\": \"Chevron\",\n  \"latitude\": 6.45,\n  \"longitude\": 3.56,\n  \"orderIndex\": 2,\n  \"tokenCost\": 4\n}"
             }
           }
         },
@@ -623,17 +779,18 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "description": "Update pickup point details.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points/{{pickupPointId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tokenCost\": 3\n}"
+              "raw": "{\n  \"name\": \"Chevron Bus Stop\",\n  \"orderIndex\": 2,\n  \"tokenCost\": 4\n}"
             }
           }
         },
@@ -644,19 +801,43 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
+                "value": "Bearer {{accessToken}}"
               }
             ],
+            "description": "Delete pickup point from route.",
             "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points/{{pickupPointId}}"
+          }
+        },
+        {
+          "name": "Reorder Pickup Points",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Batch reorder pickup points by sequence.",
+            "url": "{{baseUrl}}/api/admin/routes/{{routeId}}/pickup-points/reorder",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"id\": \"{{pickupPointId}}\",\n      \"sequence\": 1\n    }\n  ]\n}"
+            }
           }
         }
       ]
     },
     {
-      "name": "Profile",
+      "name": "Admin Ride Instances",
+      "description": "Admin ride scheduling, status operations, manifests, realtime snapshot, and CSV export.",
       "item": [
         {
-          "name": "Get Me",
+          "name": "List Ride Instances",
           "request": {
             "method": "GET",
             "header": [
@@ -665,685 +846,689 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/users/me"
+            "description": "List ride instances with availability and enrichments.",
+            "url": "{{baseUrl}}/api/admin/ride-instances?page={{page}}&limit={{limit}}&routeId={{routeId}}&rideDate={{rideDate}}&status={{status}}"
+          }
+        },
+        {
+          "name": "Create Ride Instance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create single departure ride instance.",
+            "url": "{{baseUrl}}/api/admin/ride-instances",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTime\": \"06:30\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Bulk Create Ride Instances",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create multiple departures for one date.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTimes\": [\n    \"06:30\",\n    \"14:00\",\n    \"17:30\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Ride Instance",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update ride instance status/assignments.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"boarding\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Ride Instance",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft cancel ride instance.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}"
+          }
+        },
+        {
+          "name": "Ride Manifest (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get ride manifest payload for monitor screen.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/manifest"
+          }
+        },
+        {
+          "name": "Ride Manifest (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Download ride manifest CSV export.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/manifest.csv"
+          }
+        },
+        {
+          "name": "Ride Realtime Snapshot",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get realtime state projection for ride monitor.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/realtime"
           }
         }
       ]
     },
     {
-      "name": "Admin Fleet",
+      "name": "Admin Drivers",
+      "description": "Admin driver management endpoints.",
       "item": [
         {
-          "name": "Providers",
-          "item": [
-            {
-              "name": "List Providers",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicle-providers"
+          "name": "List Drivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               }
-            },
-            {
-              "name": "Create Provider",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const data = pm.response.json();",
-                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('providerId', data.data.id); }"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicle-providers",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"name\": \"Swift Shuttle Ltd\",\n  \"contactName\": \"Ada N.\",\n  \"contactEmail\": \"ada@swiftshuttle.ng\",\n  \"contactPhone\": \"+2348011111111\",\n  \"status\": \"active\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Get Provider By Id",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
-              }
-            },
-            {
-              "name": "Update Provider",
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"contactPhone\": \"+2348022222222\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Delete Provider",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
-              }
-            }
-          ]
+            ],
+            "description": "Paginated drivers list.",
+            "url": "{{baseUrl}}/api/admin/drivers?page={{page}}&limit={{limit}}&status={{status}}&q={{q}}"
+          }
         },
         {
-          "name": "Vehicles",
-          "item": [
-            {
-              "name": "List Vehicles",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles"
+          "name": "Create Driver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            },
-            {
-              "name": "Create Vehicle",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const data = pm.response.json();",
-                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('vehicleId', data.data.id); }"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"providerId\": \"{{providerId}}\",\n  \"registrationNumber\": \"LSD-123XY\",\n  \"model\": \"Toyota Hiace\",\n  \"capacity\": 14,\n  \"status\": \"active\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Get Vehicle By Id",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
-              }
-            },
-            {
-              "name": "Update Vehicle",
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"status\": \"maintenance\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Assign Provider To Vehicle",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}/assign-provider",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"providerId\": \"{{providerId}}\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Unassign Provider From Vehicle",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}/assign-provider",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"providerId\": null\n}"
-                }
-              }
-            },
-            {
-              "name": "Delete Vehicle",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
-              }
+            ],
+            "description": "Create driver user account.",
+            "url": "{{baseUrl}}/api/admin/drivers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ife\",\n  \"lastName\": \"Ade\",\n  \"email\": \"ife.driver@example.com\",\n  \"phone\": \"+2348010000002\",\n  \"password\": \"Password123\",\n  \"status\": \"active\"\n}"
             }
-          ]
+          }
         },
         {
-          "name": "Drivers",
-          "item": [
-            {
-              "name": "List Drivers",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/drivers"
+          "name": "Get Driver",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               }
-            },
-            {
-              "name": "Create Driver",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const data = pm.response.json();",
-                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverId', data.data.id); }"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/drivers",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"firstName\": \"Kelechi\",\n  \"lastName\": \"Daniels\",\n  \"email\": \"kelechi.driver@example.com\",\n  \"phone\": \"+2348033333333\",\n  \"password\": \"Password123\",\n  \"status\": \"active\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Get Driver By Id",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
-              }
-            },
-            {
-              "name": "Update Driver",
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"phone\": \"+2348044444444\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Delete Driver",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
-              }
-            }
-          ]
+            ],
+            "description": "Get single driver details.",
+            "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
+          }
         },
         {
-          "name": "Assignments",
-          "item": [
-            {
-              "name": "Assign Driver -> Vehicle",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const data = pm.response.json();",
-                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverVehicleAssignmentId', data.data.id); }"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleId\": \"{{vehicleId}}\"\n}"
-                }
+          "name": "Update Driver",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            },
-            {
-              "name": "End Driver -> Vehicle Assignment",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle/{{driverVehicleAssignmentId}}/end"
-              }
-            },
-            {
-              "name": "Assign Driver -> Route",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const data = pm.response.json();",
-                      "if (!data.hasError && data.data && data.data.id) { pm.environment.set('driverRouteAssignmentId', data.data.id); }"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/assignments/driver-route",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"routeId\": \"{{routeId}}\"\n}"
-                }
-              }
-            },
-            {
-              "name": "End Driver -> Route Assignment",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/assignments/driver-route/{{driverRouteAssignmentId}}/end"
-              }
+            ],
+            "description": "Update driver profile/status.",
+            "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
             }
-          ]
+          }
+        },
+        {
+          "name": "Delete Driver",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft delete driver account.",
+            "url": "{{baseUrl}}/api/admin/drivers/{{driverId}}"
+          }
         }
       ]
     },
     {
-      "name": "Rides & Bookings",
+      "name": "Admin Vehicles",
+      "description": "Admin vehicle fleet CRUD and provider assignment.",
       "item": [
         {
-          "name": "Admin Ride Instances",
-          "item": [
-            {
-              "name": "Create Ride Instance",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const res = pm.response.json();",
-                      "if (!res.hasError && res.data && res.data.id) pm.environment.set('rideInstanceId', res.data.id);"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/ride-instances",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-02-16\",\n  \"departureTime\": \"06:30\"\n}"
-                }
+          "name": "List Vehicles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               }
-            },
-            {
-              "name": "Create Ride Instances Bulk",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/ride-instances/bulk",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-02-16\",\n  \"departureTimes\": [\"06:30\", \"14:00\", \"17:30\"]\n}"
-                }
-              }
-            },
-            {
-              "name": "List Ride Instances",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/ride-instances?rideDate=2026-02-16"
-              }
-            },
-            {
-              "name": "Update Ride Instance",
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"status\": \"boarding\"\n}"
-                }
-              }
-            },
-            {
-              "name": "Cancel Ride Instance",
-              "request": {
-                "method": "DELETE",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{adminAccessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}"
-              }
-            }
-          ]
+            ],
+            "description": "Paginated vehicles list.",
+            "url": "{{baseUrl}}/api/admin/vehicles?page={{page}}&limit={{limit}}&status={{status}}"
+          }
         },
         {
-          "name": "Rider Availability & Bookings",
-          "item": [
-            {
-              "name": "Route Availability By Date",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/routes/{{routeId}}/availability?date=2026-02-16"
+          "name": "Create Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
-            },
-            {
-              "name": "Create Booking (Atomic Token Deduction)",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const res = pm.response.json();",
-                      "if (!res.hasError && res.data && res.data.bookingId) pm.environment.set('bookingId', res.data.bookingId);"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/bookings",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
-                }
-              }
-            },
-            {
-              "name": "List Available Ride Instances",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/ride-instances?routeId={{routeId}}&rideDate=2026-02-16"
-              }
-            },
-            {
-              "name": "Lock Seat",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "const res = pm.response.json();",
-                      "if (!res.hasError && res.data && res.data.bookingId) pm.environment.set('bookingId', res.data.bookingId);"
-                    ]
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  },
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/bookings/lock",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
-                }
-              }
-            },
-            {
-              "name": "Confirm Booking",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/bookings/{{bookingId}}/confirm"
-              }
-            },
-            {
-              "name": "Cancel Booking",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel"
-              }
-            },
-            {
-              "name": "My Bookings",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{accessToken}}"
-                  }
-                ],
-                "url": "{{baseUrl}}/api/bookings/me"
-              }
+            ],
+            "description": "Create vehicle.",
+            "url": "{{baseUrl}}/api/admin/vehicles",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registrationNumber\": \"ABC-123XY\",\n  \"model\": \"Toyota Hiace\",\n  \"capacity\": 14,\n  \"status\": \"active\"\n}"
             }
-          ]
+          }
+        },
+        {
+          "name": "Get Vehicle",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get single vehicle.",
+            "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Update Vehicle",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update vehicle details/status.",
+            "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"maintenance\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Vehicle",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft delete vehicle.",
+            "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Assign Provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Assign/unassign provider for vehicle.",
+            "url": "{{baseUrl}}/api/admin/vehicles/{{vehicleId}}/assign-provider",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerId\": \"{{providerId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Vehicle Providers",
+      "description": "Admin provider CRUD endpoints.",
+      "item": [
+        {
+          "name": "List Providers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Paginated provider list.",
+            "url": "{{baseUrl}}/api/admin/vehicle-providers?page={{page}}&limit={{limit}}&status={{status}}&q={{q}}"
+          }
+        },
+        {
+          "name": "Create Provider",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create vehicle provider.",
+            "url": "{{baseUrl}}/api/admin/vehicle-providers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"FleetCo\",\n  \"contactName\": \"Tunde\",\n  \"contactEmail\": \"ops@fleetco.ng\",\n  \"contactPhone\": \"+2348010000003\",\n  \"status\": \"active\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Provider",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get provider by id.",
+            "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
+          }
+        },
+        {
+          "name": "Update Provider",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update provider profile/status.",
+            "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Provider",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Soft delete provider.",
+            "url": "{{baseUrl}}/api/admin/vehicle-providers/{{providerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Assignments",
+      "description": "Admin assignment endpoints for driver↔vehicle and driver↔route mapping.",
+      "item": [
+        {
+          "name": "Assign Driver to Vehicle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Assign driver to vehicle (active assignment constraints apply).",
+            "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleId\": \"{{vehicleId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "End Driver-Vehicle Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "End driver-vehicle assignment.",
+            "url": "{{baseUrl}}/api/admin/assignments/driver-vehicle/{{driverVehicleAssignmentId}}/end"
+          }
+        },
+        {
+          "name": "Assign Driver to Route",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Assign driver to route.",
+            "url": "{{baseUrl}}/api/admin/assignments/driver-route",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"routeId\": \"{{routeId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "End Driver-Route Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "End driver-route assignment.",
+            "url": "{{baseUrl}}/api/admin/assignments/driver-route/{{driverRouteAssignmentId}}/end"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Bookings",
+      "description": "Admin booking operations including filters, problem flags, and refunds.",
+      "item": [
+        {
+          "name": "List Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Filter bookings by route/date/user/status.",
+            "url": "{{baseUrl}}/api/admin/bookings?page={{page}}&limit={{limit}}&routeId={{routeId}}&date={{date}}&userId={{userId}}&status={{status}}"
+          }
+        },
+        {
+          "name": "Mark Booking Problem",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Flag or clear a problem booking.",
+            "url": "{{baseUrl}}/api/admin/bookings/{{bookingId}}/problem",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"flagged\": true,\n  \"note\": \"Manual review\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refund Booking Tokens",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Issue manual token refund for booking.",
+            "url": "{{baseUrl}}/api/admin/bookings/{{bookingId}}/refund",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5,\n  \"reason\": \"Manual adjustment\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Users",
+      "description": "Admin user visibility and wallet adjustment endpoints.",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "List users with wallet and token purchase summaries.",
+            "url": "{{baseUrl}}/api/admin/users?page={{page}}&limit={{limit}}&q={{q}}&role={{role}}&status={{status}}"
+          }
+        },
+        {
+          "name": "Get User Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get user profile, ledger, purchases, active bookings.",
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Adjust Wallet",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Credit/debit wallet and log ledger entry.",
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}/adjust-wallet",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 10,\n  \"reason\": \"Admin credit\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Settings",
+      "description": "System booking/cancellation/token settings endpoints.",
+      "item": [
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get operational settings.",
+            "url": "{{baseUrl}}/api/admin/settings"
+          }
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update booking window, cancellation window, token expiry.",
+            "url": "{{baseUrl}}/api/admin/settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingWindowDaysAhead\": 7,\n  \"cancellationWindowMinutes\": 60,\n  \"tokenExpiryDays\": 60\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Tokens",
+      "description": "Admin token purchase transactions list endpoint.",
+      "item": [
+        {
+          "name": "List Token Purchases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Filter token purchases by date/status/user with pagination.",
+            "url": "{{baseUrl}}/api/admin/tokens?page={{page}}&limit={{limit}}&from={{from}}&to={{to}}&status={{status}}&userId={{userId}}"
+          }
         }
       ]
     }

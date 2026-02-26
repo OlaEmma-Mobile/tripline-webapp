@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RealtimeService } from './realtime.service';
+import { notificationsService } from '@/lib/features/notifications/notifications.service';
 
 function createMockDb(existingNotifications: Record<string, unknown> = {}) {
   const writes: Array<{ path: string; value: unknown }> = [];
@@ -121,5 +122,57 @@ describe('RealtimeService', () => {
 
     expect(result).toMatchObject({ notificationId: 'booking-1_RIDE_BOARDED', created: false });
     expect(writes.length).toBe(0);
+  });
+
+  it('persists postgres notification before realtime mirror + push', async () => {
+    const { db } = createMockDb();
+    const service = new RealtimeService(
+      { getFcmToken: async () => 'token-1', clearFcmToken: async () => undefined } as never,
+      {
+        getDb: () => db as never,
+        getMessaging: () => ({ send: async () => 'msg-999' }) as never,
+      }
+    );
+
+    const originalCreate = notificationsService.createNotification;
+    let persisted = false;
+    notificationsService.createNotification = async () => {
+      persisted = true;
+      return { id: 'n-1', created: true };
+    };
+
+    await service.notifyBookingStatusChange({
+      userId: 'user-1',
+      bookingId: 'booking-1',
+      status: 'boarded',
+    });
+
+    expect(persisted).toBe(true);
+    notificationsService.createNotification = originalCreate;
+  });
+
+  it('fails when postgres notification persistence fails', async () => {
+    const { db } = createMockDb();
+    const service = new RealtimeService(
+      { getFcmToken: async () => 'token-1', clearFcmToken: async () => undefined } as never,
+      {
+        getDb: () => db as never,
+        getMessaging: () => ({ send: async () => 'msg-999' }) as never,
+      }
+    );
+
+    const originalCreate = notificationsService.createNotification;
+    notificationsService.createNotification = async () => {
+      throw new Error('db down');
+    };
+
+    await expect(
+      service.notifyBookingStatusChange({
+        userId: 'user-1',
+        bookingId: 'booking-1',
+        status: 'boarded',
+      })
+    ).rejects.toMatchObject({});
+    notificationsService.createNotification = originalCreate;
   });
 });

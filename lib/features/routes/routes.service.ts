@@ -36,7 +36,9 @@ function mapPickup(record: PickupPointRecord): PickupPointDTO {
     latitude: record.latitude,
     longitude: record.longitude,
     orderIndex: record.order_index,
+    sequence: record.order_index,
     tokenCost: record.token_cost,
+    tokenModifier: record.token_cost,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };

@@ -65,9 +65,12 @@ export async function DELETE(
     logIncoming(request);
     requireAdminAuth(request);
     const { id } = await context.params;
-    const data = await rideInstancesService.cancel(id);
-    logOutgoing(200, data);
-    return jsonResponse(data, 'Ride instance cancelled', 'Ride instance cancelled successfully');
+    const result = await rideInstancesService.deleteOrCancel(id);
+    logOutgoing(200, result);
+    if (result.action === 'deleted') {
+      return jsonResponse(result, 'Ride instance deleted', 'Cancelled ride instance deleted successfully');
+    }
+    return jsonResponse(result, 'Ride instance cancelled', 'Ride instance cancelled successfully');
   } catch (error) {
     if (error instanceof AppError) {
       const description =

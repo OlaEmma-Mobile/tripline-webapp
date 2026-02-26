@@ -144,6 +144,36 @@ export class RideInstancesService {
   }
 
   /**
+   * Lists ride instances with admin-specific display enrichments.
+   */
+  async listAdmin(filters: RideInstanceFilters): Promise<{ items: RideInstanceDTO[]; total: number }> {
+    const { items, total } = await this.repo.listAvailability(filters);
+    const mapped = items.map(mapAvailability);
+
+    const routeIds = [...new Set(mapped.map((item) => item.routeId))];
+    const vehicleIds = [...new Set(mapped.map((item) => item.vehicleId))];
+    const driverIds = [...new Set(mapped.map((item) => item.driverId).filter((id): id is string => Boolean(id)))];
+
+    const [routeNames, vehiclePlates, driverNames, pickupCounts] = await Promise.all([
+      this.repo.getRouteNames(routeIds),
+      this.repo.getVehiclePlates(vehicleIds),
+      this.repo.getDriverNames(driverIds),
+      this.repo.getPickupPointCounts(routeIds),
+    ]);
+
+    return {
+      total,
+      items: mapped.map((item) => ({
+        ...item,
+        routeName: routeNames[item.routeId] ?? item.routeId,
+        vehiclePlate: vehiclePlates[item.vehicleId] ?? item.vehicleId,
+        driverName: item.driverId ? (driverNames[item.driverId] ?? null) : null,
+        pickupPointsCount: pickupCounts[item.routeId] ?? 0,
+      })),
+    };
+  }
+
+  /**
    * Returns route-specific availability for a date, limited to bookable ride statuses.
    * @param routeId Route id.
    * @param rideDate Service date in YYYY-MM-DD format.
@@ -226,6 +256,25 @@ export class RideInstancesService {
       logStep('realtime ride cancel sync failed', { rideInstanceId: mapped.id });
     }
     return mapped;
+  }
+
+  /**
+   * Cancels active ride instances, or permanently deletes already-cancelled ones.
+   * @param id Ride instance id.
+   */
+  async deleteOrCancel(id: string): Promise<{ action: 'cancelled' | 'deleted'; ride?: RideInstanceDTO }> {
+    const existing = await this.repo.getById(id);
+    if (!existing) {
+      throw new AppError('Ride instance not found', 404);
+    }
+
+    if (existing.status === 'cancelled') {
+      await this.repo.hardDelete(id);
+      return { action: 'deleted' };
+    }
+
+    const ride = await this.cancel(id);
+    return { action: 'cancelled', ride };
   }
 
   /**

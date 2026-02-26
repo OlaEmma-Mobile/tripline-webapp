@@ -4,7 +4,14 @@ import { buildOtpEmail } from '@/lib/mail/templates';
 import { sendMail } from '@/lib/mail/mailer';
 import { hashPassword, verifyPassword } from '@/lib/security/password';
 import { generateOtp, hashOtp, verifyOtpHash } from '@/lib/security/otp';
-import { signAccessToken, signOtpVerifyToken, signRefreshToken, signResetVerifyToken, verifyToken } from '@/lib/security/jwt';
+import {
+  signAccessToken,
+  signOtpVerifyToken,
+  signRefreshToken,
+  signResetVerifyToken,
+  verifyAccessToken,
+  verifyToken,
+} from '@/lib/security/jwt';
 import { hashToken } from '@/lib/security/token';
 import { authRepository, AuthRepository } from './auth.repository';
 import { walletRepository } from '@/lib/features/wallet/wallet.repository';
@@ -12,6 +19,7 @@ import { logStep } from '@/lib/utils/logger';
 
 const OTP_EXPIRY_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+const ADMIN_ROLES: UserRole[] = ['admin', 'sub_admin'];
 
 /**
  * Auth service for registration, OTP verification, login, and reset flows.
@@ -155,6 +163,35 @@ export class AuthService {
     };
   }
 
+  /**
+   * Validate admin/sub-admin login credentials and return auth tokens.
+   */
+  async loginAdmin({
+    email,
+    password,
+  }: {
+    email: string;
+    password: string;
+  }): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    role: 'admin' | 'sub_admin';
+    account_status: string;
+  }> {
+    const result = await this.loginUser({ email, password });
+    const payload = verifyAccessToken(result.accessToken) as { role?: string };
+    if (!payload.role || !ADMIN_ROLES.includes(payload.role as UserRole)) {
+      throw new AppError('Admin access required', 403);
+    }
+
+    return {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      role: payload.role as 'admin' | 'sub_admin',
+      account_status: result.account_status,
+    };
+  }
+
   /** Refresh access and refresh tokens using a valid refresh token. */
   async refreshSession(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     logStep('verifying refresh token');
@@ -184,6 +221,70 @@ export class AuthService {
     return {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
+    };
+  }
+
+  /**
+   * Refresh admin/sub-admin session and enforce admin roles on rotated token.
+   */
+  async refreshAdminSession(refreshToken: string): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    role: 'admin' | 'sub_admin';
+  }> {
+    const tokens = await this.refreshSession(refreshToken);
+    const payload = verifyAccessToken(tokens.accessToken) as { role?: string };
+    if (!payload.role || !ADMIN_ROLES.includes(payload.role as UserRole)) {
+      throw new AppError('Admin access required', 403);
+    }
+    return {
+      ...tokens,
+      role: payload.role as 'admin' | 'sub_admin',
+    };
+  }
+
+  /**
+   * Create admin/sub-admin account without OTP flow.
+   */
+  async registerAdminUser({
+    firstName,
+    lastName,
+    email,
+    phone,
+    password,
+    role,
+    status,
+  }: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    password: string;
+    role: 'admin' | 'sub_admin';
+    status?: 'active' | 'inactive' | 'restricted';
+  }): Promise<{ id: string; role: 'admin' | 'sub_admin' }> {
+    const existing = await this.repo.findUserByEmail(email);
+    if (existing) {
+      throw new AppError('Email already registered', 409);
+    }
+
+    const passwordHash = await hashPassword(password);
+    const created = await this.repo.createUser({
+      firstName,
+      lastName,
+      email,
+      phone,
+      role,
+      passwordHash,
+    });
+
+    if (status && status !== created.status) {
+      await this.repo.updateUserStatus(created.id, status);
+    }
+
+    return {
+      id: created.id,
+      role,
     };
   }
 

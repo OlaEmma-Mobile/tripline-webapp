@@ -6,6 +6,7 @@ import type {
   DriverManifestRideRow,
   DriverKycRecordLite,
   DriverRecord,
+  DriverVehicleAssignmentProjection,
   UpdateDriverInput,
 } from './drivers.types';
 
@@ -175,6 +176,44 @@ export class DriversRepository {
     }
 
     return data ?? [];
+  }
+
+  /** Fetch active vehicle assignments for a batch of drivers. */
+  async getActiveVehicleAssignmentsByDriverIds(
+    driverIds: string[]
+  ): Promise<
+    Record<string, { assignmentId: string; vehicleId: string; registrationNumber: string; assignedAt: string }>
+  > {
+    if (driverIds.length === 0) return {};
+
+    const { data, error } = await supabaseAdmin
+      .from('driver_vehicle_assignments')
+      .select('id, driver_id, vehicle_id, assigned_at, vehicle:vehicles(id, registration_number)')
+      .in('driver_id', driverIds)
+      .eq('status', 'active')
+      .order('assigned_at', { ascending: false })
+      .returns<DriverVehicleAssignmentProjection[]>();
+
+    if (error) {
+      throw new AppError('Unable to fetch active driver vehicle assignments', 500);
+    }
+
+    const assignments: Record<
+      string,
+      { assignmentId: string; vehicleId: string; registrationNumber: string; assignedAt: string }
+    > = {};
+    for (const row of data ?? []) {
+      if (assignments[row.driver_id]) continue;
+      if (!row.vehicle) continue;
+      assignments[row.driver_id] = {
+        assignmentId: row.id,
+        vehicleId: row.vehicle_id,
+        registrationNumber: row.vehicle.registration_number,
+        assignedAt: row.assigned_at,
+      };
+    }
+
+    return assignments;
   }
 }
 

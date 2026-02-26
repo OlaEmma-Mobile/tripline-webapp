@@ -35,3 +35,13 @@ export const resetPasswordSchema = z.object({
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(10, { message: 'Refresh token is required' }),
 });
+
+export const adminRegisterSchema = z.object({
+  firstName: z.string().min(1, { message: 'First name is required' }),
+  lastName: z.string().min(1, { message: 'Last name is required' }),
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  phone: z.string().optional(),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
+  role: z.enum(['admin', 'sub_admin'], { message: 'Please select a valid admin role' }),
+  status: z.enum(['active', 'inactive', 'restricted']).optional(),
+});

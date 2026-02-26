@@ -28,6 +28,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const data = await bookingsService.createBooking(
       {
         rideInstanceId: body.rideInstanceId,
+        pickupPointId: body.pickupPointId,
         seatCount: body.seatCount,
       },
       auth.userId

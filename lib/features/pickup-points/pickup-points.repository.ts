@@ -1,6 +1,11 @@
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { AppError } from '@/lib/utils/errors';
-import type { PickupPointCreateInput, PickupPointRecord, PickupPointUpdateInput } from './pickup-points.types';
+import type {
+  PickupPointCreateInput,
+  PickupPointRecord,
+  PickupPointReorderItemInput,
+  PickupPointUpdateInput,
+} from './pickup-points.types';
 
 export class PickupPointsRepository {
   /**
@@ -104,6 +109,20 @@ export class PickupPointsRepository {
 
     if (error) {
       throw new AppError('Unable to delete pickup point', 500);
+    }
+  }
+
+  /**
+   * reorder Updates pickup point sequence for one route via transactional RPC.
+   */
+  async reorder(routeId: string, items: PickupPointReorderItemInput[]): Promise<void> {
+    const { error } = await supabaseAdmin.rpc('reorder_pickup_points', {
+      p_route_id: routeId,
+      p_items: items.map((item) => ({ id: item.id, sequence: item.sequence })),
+    });
+
+    if (error) {
+      throw new AppError('Unable to reorder pickup points', 500);
     }
   }
 }

@@ -11,3 +11,18 @@ export const createPickupPointSchema = z.object({
 });
 
 export const updatePickupPointSchema = createPickupPointSchema.partial();
+
+export const reorderPickupPointsSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().uuid('Pickup point id must be a valid UUID'),
+        sequence: z.number().int().positive('Sequence must be greater than 0'),
+      })
+    )
+    .min(1, 'At least one pickup point is required')
+    .refine((items) => new Set(items.map((item) => item.sequence)).size === items.length, {
+      message: 'Sequences must be unique',
+      path: ['items'],
+    }),
+});

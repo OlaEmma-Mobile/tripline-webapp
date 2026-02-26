@@ -53,6 +53,22 @@ interface DriverStatusRecord {
   status: 'active' | 'inactive' | 'restricted';
 }
 
+interface RouteNameRecord {
+  id: string;
+  name: string;
+}
+
+interface VehiclePlateRecord {
+  id: string;
+  registration_number: string;
+}
+
+interface DriverNameRecord {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
 /**
  * Ride instance persistence.
  */
@@ -175,6 +191,17 @@ export class RideInstancesRepository {
   }
 
   /**
+   * Permanently deletes a ride instance.
+   * @param id Ride instance id.
+   */
+  async hardDelete(id: string): Promise<void> {
+    const { error } = await supabaseAdmin.from('ride_instances').delete().eq('id', id);
+    if (error) {
+      throw new AppError('Unable to delete ride instance', 500);
+    }
+  }
+
+  /**
    * List ride instances joined with availability view.
    * @param filters Pagination and query filters.
    * @returns Paginated availability rows.
@@ -197,8 +224,8 @@ export class RideInstancesRepository {
     const to = from + filters.limit - 1;
 
     const { data, error, count } = await query
-      .order('ride_date', { ascending: true })
-      .order('departure_time', { ascending: true })
+      .order('ride_date', { ascending: false })
+      .order('departure_time', { ascending: false })
       .range(from, to)
       .returns<RideInstanceAvailabilityRecord[]>();
 
@@ -279,6 +306,89 @@ export class RideInstancesRepository {
       throw new AppError('Unable to fetch driver', 500);
     }
     return data ?? null;
+  }
+
+  /**
+   * Fetch route names for a list of route ids.
+   */
+  async getRouteNames(routeIds: string[]): Promise<Record<string, string>> {
+    if (routeIds.length === 0) return {};
+    const { data, error } = await supabaseAdmin
+      .from('routes')
+      .select('id, name')
+      .in('id', routeIds)
+      .returns<RouteNameRecord[]>();
+
+    if (error) {
+      throw new AppError('Unable to fetch route names', 500);
+    }
+
+    const out: Record<string, string> = {};
+    for (const row of data ?? []) out[row.id] = row.name;
+    return out;
+  }
+
+  /**
+   * Fetch vehicle plates for a list of vehicle ids.
+   */
+  async getVehiclePlates(vehicleIds: string[]): Promise<Record<string, string>> {
+    if (vehicleIds.length === 0) return {};
+    const { data, error } = await supabaseAdmin
+      .from('vehicles')
+      .select('id, registration_number')
+      .in('id', vehicleIds)
+      .returns<VehiclePlateRecord[]>();
+
+    if (error) {
+      throw new AppError('Unable to fetch vehicle plates', 500);
+    }
+
+    const out: Record<string, string> = {};
+    for (const row of data ?? []) out[row.id] = row.registration_number;
+    return out;
+  }
+
+  /**
+   * Fetch driver names for a list of user ids.
+   */
+  async getDriverNames(driverIds: string[]): Promise<Record<string, string>> {
+    if (driverIds.length === 0) return {};
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('id, first_name, last_name')
+      .in('id', driverIds)
+      .returns<DriverNameRecord[]>();
+
+    if (error) {
+      throw new AppError('Unable to fetch driver names', 500);
+    }
+
+    const out: Record<string, string> = {};
+    for (const row of data ?? []) out[row.id] = `${row.first_name} ${row.last_name}`.trim();
+    return out;
+  }
+
+  /**
+   * Fetch pickup point counts keyed by route id.
+   */
+  async getPickupPointCounts(routeIds: string[]): Promise<Record<string, number>> {
+    if (routeIds.length === 0) return {};
+    const { data, error } = await supabaseAdmin
+      .from('pickup_points')
+      .select('route_id')
+      .in('route_id', routeIds)
+      .returns<Array<{ route_id: string }>>();
+
+    if (error) {
+      throw new AppError('Unable to fetch pickup point counts', 500);
+    }
+
+    const out: Record<string, number> = {};
+    for (const routeId of routeIds) out[routeId] = 0;
+    for (const row of data ?? []) {
+      out[row.route_id] = (out[row.route_id] ?? 0) + 1;
+    }
+    return out;
   }
 }
 

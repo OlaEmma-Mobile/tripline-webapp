@@ -64,8 +64,14 @@ export class AssignmentsService {
       throw new AppError('Vehicle must be active for assignment', 400);
     }
 
+    const existingVehicleAssignment = await this.repo.getActiveDriverVehicleAssignmentByVehicle(
+      input.vehicleId
+    );
+    if (existingVehicleAssignment && existingVehicleAssignment.driver_id !== input.driverId) {
+      throw new AppError('Vehicle is already assigned to another driver', 409);
+    }
+
     await this.repo.endActiveDriverVehicleByDriver(input.driverId);
-    await this.repo.endActiveDriverVehicleByVehicle(input.vehicleId);
 
     const assignment = await this.repo.createDriverVehicleAssignment(input.driverId, input.vehicleId);
     return mapDriverVehicle(assignment);

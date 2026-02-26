@@ -1,6 +1,8 @@
 import { getFirebaseDb, getFirebaseMessaging } from '@/lib/firebase/admin';
+import { notificationsService } from '@/lib/features/notifications/notifications.service';
 import { usersRepository, UsersRepository } from '@/lib/features/users/users.repository';
 import { AppError } from '@/lib/utils/errors';
+import { logStep } from '@/lib/utils/logger';
 
 export type RealtimeRideStatus = 'scheduled' | 'boarding' | 'on_trip' | 'completed' | 'cancelled';
 
@@ -154,7 +156,7 @@ export class RealtimeService {
     };
 
     const payload = payloadMap[input.status];
-    await this.createUserNotification({
+    await notificationsService.createNotification({
       userId: input.userId,
       type: payload.type,
       message: payload.message,
@@ -162,11 +164,35 @@ export class RealtimeService {
       reason: payload.reason,
     });
 
-    await this.sendPushNotification(input.userId, payload.title, payload.message, {
-      bookingId: input.bookingId,
-      status: input.status,
-      reason: payload.reason,
-    });
+    try {
+      await this.createUserNotification({
+        userId: input.userId,
+        type: payload.type,
+        message: payload.message,
+        reference: input.bookingId,
+        reason: payload.reason,
+      });
+    } catch {
+      logStep('firebase notification mirror failed', {
+        userId: input.userId,
+        bookingId: input.bookingId,
+        reason: payload.reason,
+      });
+    }
+
+    try {
+      await this.sendPushNotification(input.userId, payload.title, payload.message, {
+        bookingId: input.bookingId,
+        status: input.status,
+        reason: payload.reason,
+      });
+    } catch {
+      logStep('push notification failed', {
+        userId: input.userId,
+        bookingId: input.bookingId,
+        reason: payload.reason,
+      });
+    }
   }
 }
 

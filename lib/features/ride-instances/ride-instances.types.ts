@@ -87,6 +87,14 @@ export interface RideInstanceDTO {
   createdAt: string;
   /** Last update timestamp. */
   updatedAt: string;
+  /** Optional route display name (admin-enriched responses). */
+  routeName?: string;
+  /** Optional vehicle registration number (admin-enriched responses). */
+  vehiclePlate?: string;
+  /** Optional driver full name (admin-enriched responses). */
+  driverName?: string | null;
+  /** Optional pickup point count for this route (admin-enriched responses). */
+  pickupPointsCount?: number;
 }
 
 /**

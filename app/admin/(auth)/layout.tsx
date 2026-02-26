@@ -4,14 +4,14 @@ import AdminBenefitsCarousel from '@/components/admin-benefits-carousel';
 export default function AdminAuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto flex min-h-screen max-w-6xl items-stretch px-4 sm:px-6 lg:px-8">
-        <div className="grid w-full grid-cols-1 gap-10 py-16 lg:grid-cols-[1.1fr_0.9fr]">
-          <section className="order-2 flex items-center lg:order-1">
-            <div className="relative w-full overflow-hidden rounded-3xl border border-border bg-foreground/90">
+      <main className="mx-auto- flex min-h-screen max-w-7xl- items-stretch px-4- sm:px-6- lg:px-8-">
+        <div className="grid w-full grid-cols-1 gap-10- py-16- lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="order-2 flex items-center h-screen lg:order-1">
+            <div className="relative w-full h-screen overflow-hidden rounded-3xl- border border-border bg-foreground/90">
               <div className="absolute inset-0">
                 <Image
                   src="/hero-bg.jpg"
-                  alt="Tripline admin console"
+                  alt="Tripline commuters"
                   fill
                   className="object-cover"
                   priority

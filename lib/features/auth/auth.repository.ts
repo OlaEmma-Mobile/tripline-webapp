@@ -188,6 +188,17 @@ export class AuthRepository {
     }
   }
 
+  /** Update user account status. */
+  async updateUserStatus(
+    userId: string,
+    status: 'active' | 'inactive' | 'restricted'
+  ): Promise<void> {
+    const { error } = await supabaseAdmin.from('users').update({ status }).eq('id', userId);
+    if (error) {
+      throw new AppError('Unable to update user status', 500);
+    }
+  }
+
   /** Store a refresh token hash. */
   async createRefreshToken({
     userId,
@@ -220,12 +231,14 @@ export class AuthRepository {
       .from('refresh_tokens')
       .select('*')
       .eq('token_hash', tokenHash)
-      .maybeSingle<RefreshTokenRecord>();
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .returns<RefreshTokenRecord[]>();
 
     if (error) {
       throw new AppError('Unable to fetch refresh token', 500);
     }
-    return data ?? null;
+    return data?.[0] ?? null;
   }
 
   /** Revoke a refresh token. */

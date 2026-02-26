@@ -18,6 +18,10 @@ export interface BookingRecord {
   ride_instance_id: string;
   /** Linked rider user id. */
   rider_id: string;
+  /** Selected pickup point for this booking. */
+  pickup_point_id: string | null;
+  /** Token cost per seat at booking stop. */
+  token_cost: number;
   /** Booking state. */
   status: BookingStatus;
   /** Number of seats reserved by this booking. */
@@ -50,6 +54,12 @@ export interface BookingDTO {
   rideInstanceId: string;
   /** Rider user id. */
   riderId: string;
+  /** Pickup point id. */
+  pickupPointId: string | null;
+  /** Token cost per seat. */
+  tokenCost: number;
+  /** Pickup point display name when requested with joins. */
+  pickupPointName?: string | null;
   /** Booking state. */
   status: BookingStatus;
   /** Number of seats reserved. */
@@ -90,6 +100,8 @@ export interface LockSeatInput {
 export interface CreateBookingInput {
   /** Target ride instance id. */
   rideInstanceId: string;
+  /** Pickup point id on route. */
+  pickupPointId: string;
   /** Number of seats to book. */
   seatCount: number;
 }
@@ -106,6 +118,10 @@ export interface CreateBookingResult {
   riderId: string;
   /** Booking status, expected `booked`. */
   status: BookingStatus;
+  /** Pickup point id used for booking. */
+  pickupPointId: string;
+  /** Token cost per seat resolved at booking time. */
+  tokenCost: number;
   /** Number of seats booked. */
   seatCount: number;
   /** Tokens deducted in this booking transaction. */
@@ -160,6 +176,12 @@ export interface BookingWithRideRecord extends BookingRecord {
     departure_time: string;
     /** Ride status. */
     status: string;
+  } | null;
+  /** Embedded pickup point details if selected. */
+  pickup_point?: {
+    id: string;
+    name: string;
+    token_cost: number;
   } | null;
 }
 

@@ -47,7 +47,7 @@ export default function RouteFormModal({
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
   const libraries = useMemo(() => ['places'] as ('places')[], []);
   const { isLoaded } = useJsApiLoader({
-    id: 'tripline-admin-route-places',
+    id: 'tripline-google-maps-loader',
     googleMapsApiKey: mapsKey,
     libraries,
   });
@@ -75,6 +75,11 @@ export default function RouteFormModal({
         </DialogHeader>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {errorText('_form') ? (
+            <p className="sm:col-span-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {errorText('_form')}
+            </p>
+          ) : null}
           <Field label="Route Name" error={errorText('name')}>
             <input className="w-full rounded-lg border border-input bg-background px-3 py-2" value={values.name} onChange={(e) => setField('name', e.target.value)} />
           </Field>
@@ -86,32 +91,52 @@ export default function RouteFormModal({
             </select>
           </Field>
 
-          <PlaceAutocompleteField
-            label="From Location"
-            value={values.fromName}
-            error={errorText('fromName') ?? errorText('fromLatitude') ?? errorText('fromLongitude')}
-            placeholder={isLoaded ? 'Search origin with Google Places' : 'Loading Google Places...'}
-            disabled={!isLoaded}
-            onPlaceSelected={({ name, latitude, longitude }) => {
-              setField('fromName', name);
-              setField('fromLatitude', String(latitude));
-              setField('fromLongitude', String(longitude));
-            }}
-            onInputChange={(next) => setField('fromName', next)}
-          />
-          <PlaceAutocompleteField
-            label="To Location"
-            value={values.toName}
-            error={errorText('toName') ?? errorText('toLatitude') ?? errorText('toLongitude')}
-            placeholder={isLoaded ? 'Search destination with Google Places' : 'Loading Google Places...'}
-            disabled={!isLoaded}
-            onPlaceSelected={({ name, latitude, longitude }) => {
-              setField('toName', name);
-              setField('toLatitude', String(latitude));
-              setField('toLongitude', String(longitude));
-            }}
-            onInputChange={(next) => setField('toName', next)}
-          />
+          {isLoaded ? (
+            <PlaceAutocompleteField
+              label="From Location"
+              value={values.fromName}
+              error={errorText('fromName') ?? errorText('fromLatitude') ?? errorText('fromLongitude')}
+              placeholder="Search origin with Google Places"
+              onPlaceSelected={({ name, latitude, longitude }) => {
+                setField('fromName', name);
+                setField('fromLatitude', String(latitude));
+                setField('fromLongitude', String(longitude));
+              }}
+              onInputChange={(next) => setField('fromName', next)}
+            />
+          ) : (
+            <Field label="From Location" error={null}>
+              <input
+                className="w-full rounded-lg border border-input bg-background px-3 py-2"
+                placeholder="Loading Google Places..."
+                disabled
+              />
+            </Field>
+          )}
+          {isLoaded ? (
+            <PlaceAutocompleteField
+              label="To Location"
+              value={values.toName}
+              error={errorText('toName') ?? errorText('toLatitude') ?? errorText('toLongitude')}
+              placeholder={isLoaded ? 'Search destination with Google Places' : 'Loading Google Places...'}
+              disabled={!isLoaded}
+              onPlaceSelected={({ name, latitude, longitude }) => {
+                setField('toName', name);
+                setField('toLatitude', String(latitude));
+                setField('toLongitude', String(longitude));
+              }}
+              onInputChange={(next) => setField('toName', next)}
+            />
+          ) : (
+            <Field label="To Location" error={null}>
+              <input
+                className="w-full rounded-lg border border-input bg-background px-3 py-2"
+                placeholder="Loading Google Places..."
+                disabled
+              />
+            </Field>
+          )}
+
 
           <Field label="From Latitude" error={errorText('fromLatitude')}>
             <input

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Bricolage_Grotesque } from 'next/font/google'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import QueryProvider from '@/components/providers/query-provider'
 import './globals.css'
 
 const _bricolageGrotesque = Bricolage_Grotesque({ subsets: ["latin"] });
@@ -89,8 +90,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
-        <Analytics />
+        <QueryProvider>
+          {children}
+          <Analytics />
+        </QueryProvider>
       </body>
     </html>
   )

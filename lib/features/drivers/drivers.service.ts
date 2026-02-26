@@ -28,6 +28,7 @@ function mapDriver(record: DriverRecord, kycStatus: DriverKycStatus = null): Dri
     emailVerified: Boolean(record.email_verified_at),
     status: record.status,
     kycStatus,
+    assignedVehicle: null,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -80,9 +81,15 @@ export class DriversService {
   async list(filters: DriverFilters): Promise<{ items: DriverDTO[]; total: number }> {
     const { items, total } = await this.repo.list(filters);
     const kycMap = await this.repo.getKycByDriverIds(items.map((item) => item.id));
+    const assignmentMap = await this.repo.getActiveVehicleAssignmentsByDriverIds(
+      items.map((item) => item.id)
+    );
 
     return {
-      items: items.map((item) => mapDriver(item, kycMap[item.id] ?? null)),
+      items: items.map((item) => ({
+        ...mapDriver(item, kycMap[item.id] ?? null),
+        assignedVehicle: assignmentMap[item.id] ?? null,
+      })),
       total,
     };
   }
@@ -94,7 +101,11 @@ export class DriversService {
       throw new AppError('Driver not found', 404);
     }
     const kycMap = await this.repo.getKycByDriverIds([id]);
-    return mapDriver(driver, kycMap[id] ?? null);
+    const assignmentMap = await this.repo.getActiveVehicleAssignmentsByDriverIds([id]);
+    return {
+      ...mapDriver(driver, kycMap[id] ?? null),
+      assignedVehicle: assignmentMap[id] ?? null,
+    };
   }
 
   /** Update a driver profile. */
@@ -105,7 +116,11 @@ export class DriversService {
     }
     const updated = await this.repo.update(id, input);
     const kycMap = await this.repo.getKycByDriverIds([id]);
-    return mapDriver(updated, kycMap[id] ?? null);
+    const assignmentMap = await this.repo.getActiveVehicleAssignmentsByDriverIds([id]);
+    return {
+      ...mapDriver(updated, kycMap[id] ?? null),
+      assignedVehicle: assignmentMap[id] ?? null,
+    };
   }
 
   /** Soft-delete driver by status deactivation. */

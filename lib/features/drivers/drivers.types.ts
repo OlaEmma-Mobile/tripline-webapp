@@ -25,6 +25,12 @@ export interface DriverDTO {
   emailVerified: boolean;
   status: DriverStatus;
   kycStatus: DriverKycStatus;
+  assignedVehicle: {
+    assignmentId: string;
+    vehicleId: string;
+    registrationNumber: string;
+    assignedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,4 +104,15 @@ export interface DriverManifestRideRow {
     registration_number: string;
   } | null;
   bookings: DriverManifestBookingRow[] | null;
+}
+
+export interface DriverVehicleAssignmentProjection {
+  id: string;
+  driver_id: string;
+  vehicle_id: string;
+  assigned_at: string;
+  vehicle: {
+    id: string;
+    registration_number: string;
+  } | null;
 }

@@ -27,6 +27,8 @@ interface CreateBookingRpcRow {
   booking_id: string;
   ride_instance_id: string;
   rider_id: string;
+  pickup_point_id: string;
+  token_cost: number;
   status: BookingRecord['status'];
   seat_count: number;
   tokens_deducted: number;
@@ -50,6 +52,7 @@ export class BookingsRepository {
     const { data, error } = await supabaseAdmin.rpc('create_booking_with_tokens', {
       p_ride_instance_id: input.rideInstanceId,
       p_rider_id: riderId,
+      p_pickup_point_id: input.pickupPointId,
       p_seat_count: input.seatCount,
     });
 
@@ -66,6 +69,8 @@ export class BookingsRepository {
       bookingId: row.booking_id,
       rideInstanceId: row.ride_instance_id,
       riderId: row.rider_id,
+      pickupPointId: row.pickup_point_id,
+      tokenCost: row.token_cost,
       status: row.status,
       seatCount: row.seat_count,
       tokensDeducted: row.tokens_deducted,
@@ -167,7 +172,7 @@ export class BookingsRepository {
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, ride_instance_id, rider_id, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(route_id, vehicle_id, ride_date, departure_time, status)'
+        'id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(route_id, vehicle_id, ride_date, departure_time, status), pickup_point:pickup_points(id, name, token_cost)'
       )
       .eq('rider_id', riderId)
       .order('created_at', { ascending: false })
@@ -188,7 +193,7 @@ export class BookingsRepository {
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, ride_instance_id, rider_id, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(id, driver_id)'
+        'id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(id, driver_id)'
       )
       .eq('id', bookingId)
       .maybeSingle<DriverBookingRecord>();

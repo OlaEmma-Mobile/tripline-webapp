@@ -93,6 +93,24 @@ export class AssignmentsRepository {
     }
   }
 
+  /** Find active driver->vehicle assignment by vehicle id. */
+  async getActiveDriverVehicleAssignmentByVehicle(
+    vehicleId: string
+  ): Promise<DriverVehicleAssignmentRecord | null> {
+    const { data, error } = await supabaseAdmin
+      .from('driver_vehicle_assignments')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .eq('status', 'active')
+      .maybeSingle<DriverVehicleAssignmentRecord>();
+
+    if (error) {
+      throw new AppError('Unable to fetch active vehicle assignment', 500);
+    }
+
+    return data ?? null;
+  }
+
   /** Insert a new active driver->vehicle assignment. */
   async createDriverVehicleAssignment(driverId: string, vehicleId: string): Promise<DriverVehicleAssignmentRecord> {
     const { data, error } = await supabaseAdmin

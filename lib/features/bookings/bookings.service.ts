@@ -24,6 +24,8 @@ function mapBooking(record: BookingRecord): BookingDTO {
     id: record.id,
     rideInstanceId: record.ride_instance_id,
     riderId: record.rider_id,
+    pickupPointId: record.pickup_point_id,
+    tokenCost: record.token_cost,
     status: record.status,
     seatCount: record.seat_count,
     seatNumber: record.seat_number,
@@ -45,6 +47,7 @@ function mapBookingWithRide(record: BookingWithRideRecord): BookingDTO & {
 } {
   return {
     ...mapBooking(record),
+    pickupPointName: record.pickup_point?.name ?? null,
     rideInstance: record.ride_instance,
   };
 }
@@ -103,6 +106,12 @@ export class BookingsService {
     }
     if (message.includes('RIDE_NOT_BOOKABLE')) {
       throw new AppError('Ride is not open for booking', 409);
+    }
+    if (message.includes('PICKUP_POINT_REQUIRED')) {
+      throw new AppError('Pickup point is required', 400);
+    }
+    if (message.includes('PICKUP_POINT_NOT_FOUND')) {
+      throw new AppError('Pickup point not found for this route', 404);
     }
     if (message.includes('ROUTE_NOT_FOUND')) {
       throw new AppError('Route not found', 404);

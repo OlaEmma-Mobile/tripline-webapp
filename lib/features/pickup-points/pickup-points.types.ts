@@ -17,7 +17,9 @@ export interface PickupPointDTO {
   latitude: number;
   longitude: number;
   orderIndex: number;
+  sequence: number;
   tokenCost: number;
+  tokenModifier: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,4 +39,9 @@ export interface PickupPointUpdateInput {
   longitude?: number;
   orderIndex?: number;
   tokenCost?: number;
+}
+
+export interface PickupPointReorderItemInput {
+  id: string;
+  sequence: number;
 }

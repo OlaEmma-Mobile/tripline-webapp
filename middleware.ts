@@ -8,6 +8,8 @@ const AUTH_WHITELIST = [
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
   '/api/auth/refresh',
+  '/api/admin/auth/login',
+  '/api/admin/auth/refresh',
   '/api/paystack/webhook',
 ];
 

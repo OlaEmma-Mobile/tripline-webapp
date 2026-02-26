@@ -119,7 +119,19 @@ export class RoutesRepository {
    * deleteRoute Executes a core module operation used by API workflows.
    */
   async deleteRoute(routeId: string): Promise<void> {
-    const { error } = await supabaseAdmin.from('routes').delete().eq('id', routeId);
+    const { error } = await supabaseAdmin
+      .from('routes')
+      .delete()
+      .eq('id', routeId)
+      .select('id')
+      .single<{ id: string }>();
+
+    if (error?.code === 'PGRST116') {
+      throw new AppError('Route not found', 404);
+    }
+    if (error?.code === '23503') {
+      throw new AppError('Route cannot be deleted because it is referenced by other records', 409);
+    }
     if (error) {
       throw new AppError('Unable to delete route', 500);
     }

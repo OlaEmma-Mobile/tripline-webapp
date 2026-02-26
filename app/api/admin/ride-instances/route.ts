@@ -25,7 +25,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
     logStep('validated ride instances query');
 
-    const data = await rideInstancesService.list(query);
+    const data = await rideInstancesService.listAdmin(query);
     logOutgoing(200, data);
     return jsonResponse(data, 'Ride instances fetched', 'Ride instances list retrieved');
   } catch (error) {

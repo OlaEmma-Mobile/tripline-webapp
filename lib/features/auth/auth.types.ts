@@ -40,6 +40,16 @@ export interface RefreshTokenPayload {
   refreshToken: string;
 }
 
+export interface AdminRegisterPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  password: string;
+  role: 'admin' | 'sub_admin';
+  status?: UserStatus;
+}
+
 export interface UserRecord {
   id: string;
   first_name: string;
