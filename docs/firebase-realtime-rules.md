@@ -1,5 +1,8 @@
 # Firebase Realtime Rules (Baseline)
 
+Canonical rules file:
+- `/Users/mac/Documents/tripline-webapp/firebase/rules.realtime.json`
+
 Use these as a starting point for mobile direct access. Backend writes use Admin SDK and bypass rules.
 
 ```json

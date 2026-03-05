@@ -105,7 +105,13 @@ export class RideInstancesService {
     if (!availability) {
       throw new AppError('Unable to fetch created ride availability', 500);
     }
-    return mapAvailability(availability);
+    const mapped = mapAvailability(availability);
+    try {
+      await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+    } catch {
+      logStep('realtime ride create sync failed', { rideInstanceId: mapped.id });
+    }
+    return mapped;
   }
 
   /**
@@ -128,7 +134,15 @@ export class RideInstancesService {
     const results: RideInstanceDTO[] = [];
     for (const item of created) {
       const availability = await this.repo.getAvailabilityByRideInstanceId(item.id);
-      if (availability) results.push(mapAvailability(availability));
+      if (availability) {
+        const mapped = mapAvailability(availability);
+        try {
+          await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+        } catch {
+          logStep('realtime ride bulk-create sync failed', { rideInstanceId: mapped.id });
+        }
+        results.push(mapped);
+      }
     }
     return results;
   }
@@ -270,6 +284,11 @@ export class RideInstancesService {
 
     if (existing.status === 'cancelled') {
       await this.repo.hardDelete(id);
+      try {
+        await realtimeService.deleteRideState(id);
+      } catch {
+        logStep('realtime ride delete sync failed', { rideInstanceId: id });
+      }
       return { action: 'deleted' };
     }
 

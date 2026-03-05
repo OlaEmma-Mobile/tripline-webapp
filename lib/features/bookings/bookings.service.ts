@@ -182,7 +182,10 @@ export class BookingsService {
             bookingId: mapped.id,
             status: 'cancelled',
           });
-        } catch {
+        } catch (error) {
+          if (error instanceof AppError && error.message.includes('Unable to create notification')) {
+            throw error;
+          }
           logStep('realtime notification sync failed', {
             bookingId: mapped.id,
             status: 'cancelled',
@@ -233,7 +236,10 @@ export class BookingsService {
             bookingId: mapped.id,
             status: mapped.status,
           });
-        } catch {
+        } catch (error) {
+          if (error instanceof AppError && error.message.includes('Unable to create notification')) {
+            throw error;
+          }
           logStep('realtime notification sync failed', {
             bookingId: mapped.id,
             status: mapped.status,

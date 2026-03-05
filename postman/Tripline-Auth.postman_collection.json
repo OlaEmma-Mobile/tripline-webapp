@@ -1531,6 +1531,138 @@
           }
         }
       ]
+    },
+    {
+      "name": "Notifications",
+      "description": "User notification APIs for token registration and notification inbox.",
+      "item": [
+        {
+          "name": "Save Push Token",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Register or update current user FCM token.",
+            "url": "{{baseUrl}}/api/users/me/push-token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{fcmToken}}\",\n  \"platform\": \"android\",\n  \"appVersion\": \"1.0.0\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Push Token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "",
+            "url": "{{baseUrl}}/api/users/me/push-token"
+          }
+        },
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "",
+            "url": "{{baseUrl}}/api/notifications?unreadOnly=false&page=1&limit=20"
+          }
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Mark one notification as read.",
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Mark all unread notifications as read.",
+            "url": "{{baseUrl}}/api/notifications/read-all"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Notifications",
+      "description": "Admin diagnostics endpoints for notifications and delivery attempts.",
+      "item": [
+        {
+          "name": "Admin List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "List persisted notifications with filters. Use userId/reason/from/to query params.",
+            "url": "{{baseUrl}}/api/admin/notifications?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Admin List Delivery Attempts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "List notification channel delivery attempts.",
+            "url": "{{baseUrl}}/api/admin/notifications/delivery-attempts?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Admin Process Notification Outbox",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Process queued notification retries from outbox.",
+            "url": "{{baseUrl}}/api/admin/notifications/outbox/process?limit=50"
+          }
+        }
+      ]
     }
   ]
 }

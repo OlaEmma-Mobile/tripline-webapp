@@ -25,6 +25,16 @@ export interface SendPushNotificationResult {
   messageId: string | null;
 }
 
+interface NotifyUserEventInput {
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  reference: string;
+  reason: string;
+  metadata?: Record<string, unknown>;
+}
+
 interface RealtimeDependencies {
   getDb: typeof getFirebaseDb;
   getMessaging: typeof getFirebaseMessaging;
@@ -47,6 +57,13 @@ export class RealtimeService {
    */
   async updateRideStatus(rideInstanceId: string, status: RealtimeRideStatus): Promise<void> {
     await this.deps.getDb().ref(`realtime/rides/${rideInstanceId}/status`).set(status);
+  }
+
+  /**
+   * Deletes the ride realtime node when a ride is permanently removed.
+   */
+  async deleteRideState(rideInstanceId: string): Promise<void> {
+    await this.deps.getDb().ref(`realtime/rides/${rideInstanceId}`).set(null);
   }
 
   /**
@@ -156,43 +173,175 @@ export class RealtimeService {
     };
 
     const payload = payloadMap[input.status];
-    await notificationsService.createNotification({
+    await this.notifyUserEvent({
       userId: input.userId,
       type: payload.type,
+      title: payload.title,
       message: payload.message,
       reference: input.bookingId,
       reason: payload.reason,
+    });
+  }
+
+  /**
+   * Persists notification and performs RTDB + FCM fanout with delivery tracking.
+   */
+  async notifyUserEvent(input: NotifyUserEventInput): Promise<void> {
+    const created = await notificationsService.createNotificationAndQueueDelivery({
+      userId: input.userId,
+      type: input.type,
+      message: input.message,
+      reference: input.reference,
+      reason: input.reason,
+      metadata: input.metadata,
     });
 
     try {
       await this.createUserNotification({
         userId: input.userId,
-        type: payload.type,
-        message: payload.message,
-        reference: input.bookingId,
-        reason: payload.reason,
+        type: input.type,
+        message: input.message,
+        reference: input.reference,
+        reason: input.reason,
+        metadata: input.metadata,
+      });
+      await notificationsService.markDeliveryStatus({
+        notificationId: created.id,
+        channel: 'rtdb',
+        status: 'sent',
       });
     } catch {
+      await notificationsService.markDeliveryStatus({
+        notificationId: created.id,
+        channel: 'rtdb',
+        status: 'failed',
+        errorMessage: 'RTDB_MIRROR_FAILED',
+      });
+      await notificationsService.enqueueDeliveryRetry({
+        notificationId: created.id,
+        channel: 'rtdb',
+        errorMessage: 'RTDB_MIRROR_FAILED',
+      });
       logStep('firebase notification mirror failed', {
         userId: input.userId,
-        bookingId: input.bookingId,
-        reason: payload.reason,
+        reference: input.reference,
+        reason: input.reason,
       });
     }
 
     try {
-      await this.sendPushNotification(input.userId, payload.title, payload.message, {
-        bookingId: input.bookingId,
-        status: input.status,
-        reason: payload.reason,
+      const push = await this.sendPushNotification(input.userId, input.title, input.message, {
+        reference: input.reference,
+        reason: input.reason,
+      });
+      if (!push.sent) {
+        await notificationsService.markDeliveryStatus({
+          notificationId: created.id,
+          channel: 'fcm',
+          status: 'failed',
+          errorMessage: 'FCM_TOKEN_MISSING',
+        });
+        return;
+      }
+      await notificationsService.markDeliveryStatus({
+        notificationId: created.id,
+        channel: 'fcm',
+        status: 'sent',
       });
     } catch {
+      await notificationsService.markDeliveryStatus({
+        notificationId: created.id,
+        channel: 'fcm',
+        status: 'failed',
+        errorMessage: 'FCM_PUSH_FAILED',
+      });
+      await notificationsService.enqueueDeliveryRetry({
+        notificationId: created.id,
+        channel: 'fcm',
+        errorMessage: 'FCM_PUSH_FAILED',
+      });
       logStep('push notification failed', {
         userId: input.userId,
-        bookingId: input.bookingId,
-        reason: payload.reason,
+        reference: input.reference,
+        reason: input.reason,
       });
     }
+  }
+
+  /**
+   * Processes queued notification outbox jobs.
+   * This method is designed for cron/admin-triggered retries.
+   */
+  async processOutbox(limit = 50): Promise<{ processed: number; succeeded: number; failed: number }> {
+    const jobs = await notificationsService.dequeueOutbox(limit);
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const job of jobs) {
+      try {
+        const notification = await notificationsService.getRecordById(job.notification_id);
+        if (!notification) {
+          throw new AppError('Notification not found', 404);
+        }
+
+        if (job.channel === 'rtdb') {
+          await this.createUserNotification({
+            userId: notification.user_id,
+            type: notification.type,
+            message: notification.message,
+            reference: notification.reference ?? notification.id,
+            reason: notification.reason ?? 'GENERAL',
+            metadata: (notification.metadata as Record<string, unknown> | null) ?? {},
+          });
+          await notificationsService.markDeliveryStatus({
+            notificationId: notification.id,
+            channel: 'rtdb',
+            status: 'sent',
+          });
+        } else {
+          const push = await this.sendPushNotification(
+            notification.user_id,
+            'Tripline update',
+            notification.message,
+            {
+              notificationId: notification.id,
+              reason: notification.reason ?? 'GENERAL',
+            }
+          );
+          if (!push.sent) {
+            await notificationsService.markDeliveryStatus({
+              notificationId: notification.id,
+              channel: 'fcm',
+              status: 'failed',
+              errorMessage: 'FCM_TOKEN_MISSING',
+            });
+            await notificationsService.markOutboxCompleted(job.id);
+            succeeded += 1;
+            continue;
+          }
+          await notificationsService.markDeliveryStatus({
+            notificationId: notification.id,
+            channel: 'fcm',
+            status: 'sent',
+          });
+        }
+
+        await notificationsService.markOutboxCompleted(job.id);
+        succeeded += 1;
+      } catch (error) {
+        await notificationsService.markOutboxFailed(
+          job.id,
+          error instanceof Error ? error.message : 'UNKNOWN_OUTBOX_ERROR'
+        );
+        failed += 1;
+      }
+    }
+
+    return {
+      processed: jobs.length,
+      succeeded,
+      failed,
+    };
   }
 }
 

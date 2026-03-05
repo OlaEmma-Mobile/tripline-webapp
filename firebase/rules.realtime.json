@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "realtime": {
+      "rides": {
+        "$rideId": {
+          ".read": "auth != null",
+          ".write": false
+        }
+      },
+      "notifications": {
+        "$userId": {
+          ".read": "auth != null && auth.uid == $userId",
+          ".write": "auth != null && auth.uid == $userId"
+        }
+      }
+    }
+  }
+}

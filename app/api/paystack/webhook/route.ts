@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyPaystackSignature } from '@/lib/security/paystack';
 import { paymentsRepository } from '@/lib/features/payments/payments.repository';
 import { walletService } from '@/lib/features/wallet/wallet.service';
+import { realtimeService } from '@/lib/features/realtime/realtime.service';
 import { errorResponse, jsonResponse } from '@/lib/utils/responses';
 import { logIncoming, logOutgoing, logStep } from '@/lib/utils/logger';
 
@@ -54,6 +55,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         tokens: purchase.tokens,
       });
 
+      try {
+        await realtimeService.notifyUserEvent({
+          userId: purchase.user_id,
+          type: 'token_purchase',
+          title: 'Tokens purchased',
+          message: `Your payment was successful. ${purchase.tokens} tokens were credited.`,
+          reference: purchase.id,
+          reason: 'TOKEN_PURCHASE_SUCCESS',
+          metadata: {
+            amountNgn: purchase.amount_ngn,
+            tokens: purchase.tokens,
+          },
+        });
+      } catch {
+        logStep('token purchase success notification failed', {
+          purchaseId: purchase.id,
+          userId: purchase.user_id,
+        });
+      }
+
       logOutgoing(200, { ok: true });
       return jsonResponse({ ok: true }, 'Webhook processed', 'Wallet credited');
     }
@@ -61,6 +82,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (event === 'charge.failed' || event === 'charge.abandoned') {
       logStep('marking purchase failed');
       await paymentsRepository.updatePurchaseStatus(purchase.id, 'failed');
+      try {
+        await realtimeService.notifyUserEvent({
+          userId: purchase.user_id,
+          type: 'token_purchase',
+          title: 'Payment failed',
+          message: 'Your token purchase payment failed or was abandoned.',
+          reference: purchase.id,
+          reason: 'TOKEN_PURCHASE_FAILED',
+          metadata: {
+            amountNgn: purchase.amount_ngn,
+            tokens: purchase.tokens,
+          },
+        });
+      } catch {
+        logStep('token purchase failure notification failed', {
+          purchaseId: purchase.id,
+          userId: purchase.user_id,
+        });
+      }
       logOutgoing(200, { ok: true });
       return jsonResponse({ ok: true }, 'Webhook processed', 'Payment failed');
     }

@@ -63,6 +63,25 @@ export class UsersRepository {
       throw new AppError('Unable to clear fcm token', 500);
     }
   }
+
+  /** Upserts a user's FCM token + metadata. */
+  async setFcmToken(
+    userId: string,
+    input: { token: string; platform?: 'ios' | 'android' | 'web' }
+  ): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({
+        fcm_token: input.token,
+        fcm_token_platform: input.platform ?? null,
+        fcm_token_updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new AppError('Unable to save fcm token', 500);
+    }
+  }
 }
 
 export const usersRepository = new UsersRepository();
