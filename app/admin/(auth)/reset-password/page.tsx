@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import AuthShell from '@/components/auth-shell';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ interface ResetPasswordResponse {
   success: boolean;
 }
 
-export default function AdminResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const verifyToken = searchParams.get('verifyToken') ?? '';
@@ -118,5 +118,26 @@ export default function AdminResetPasswordPage() {
         {resetMutation.isPending ? 'Updating...' : 'Reset Password'}
       </Button>
     </AuthShell>
+  );
+}
+
+export default function AdminResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthShell
+          title="Set new admin password"
+          subtitle="Use a strong password with at least 8 characters."
+        >
+          <div className="space-y-4">
+            <div className="h-12 rounded-lg bg-muted/30" />
+            <div className="h-12 rounded-lg bg-muted/30" />
+            <div className="h-12 rounded-lg bg-muted/30" />
+          </div>
+        </AuthShell>
+      }
+    >
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

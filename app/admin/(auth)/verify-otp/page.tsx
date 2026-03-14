@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import AuthShell from '@/components/auth-shell';
 import OtpInput from '@/components/otp-input';
@@ -23,7 +23,7 @@ interface ResendOtpResponse {
   purpose: 'verify_email' | 'reset_password';
 }
 
-export default function AdminVerifyOtpPage() {
+function VerifyOtpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const flow = searchParams.get('flow') === 'reset' ? 'reset' : 'login';
@@ -177,5 +177,26 @@ export default function AdminVerifyOtpPage() {
         </Link>
       </p>
     </AuthShell>
+  );
+}
+
+export default function AdminVerifyOtpPage() {
+  return (
+    <Suspense
+      fallback={
+        <AuthShell
+          title="Verify admin access"
+          subtitle="Enter the 4-digit OTP we sent to your work email."
+        >
+          <div className="space-y-4">
+            <div className="h-12 rounded-lg bg-muted/30" />
+            <div className="h-12 rounded-lg bg-muted/30" />
+            <div className="h-12 rounded-lg bg-muted/30" />
+          </div>
+        </AuthShell>
+      }
+    >
+      <VerifyOtpForm />
+    </Suspense>
   );
 }
