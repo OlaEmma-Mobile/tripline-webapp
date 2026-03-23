@@ -23,7 +23,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     logStep('creating bulk ride instances', {
       count: body.departureTimes.length,
       routeId: body.routeId,
-      vehicleId: body.vehicleId,
       rideDate: body.rideDate,
     });
 

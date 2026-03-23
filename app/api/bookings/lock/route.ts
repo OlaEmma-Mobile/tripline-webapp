@@ -26,7 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const data = await bookingsService.lockSeat(
       {
-        rideInstanceId: body.rideInstanceId,
+        tripId: body.tripId,
         seatCount: body.seatCount,
       },
       auth.userId

@@ -39,6 +39,10 @@
       "value": ""
     },
     {
+      "key": "tripId",
+      "value": ""
+    },
+    {
       "key": "bookingId",
       "value": ""
     },
@@ -101,6 +105,15 @@
     {
       "key": "companyId",
       "value": ""
+    },
+    {
+      "key": "driverTripId",
+      "value": ""
+    },
+    {
+      "key": "driverId2",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -388,7 +401,7 @@
     },
     {
       "name": "Bookings",
-      "description": "Rider booking lifecycle endpoints including lock, confirm, cancel, and driver boarding updates.",
+      "description": "Trip-first booking flow. Riders discover a ride instance, choose a concrete trip under it, then create or lock a booking with `tripId`. Ride instances themselves are not bookable.",
       "item": [
         {
           "name": "Create Booking",
@@ -404,11 +417,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Create booking and deduct tokens atomically.",
+            "description": "Create a booking against a specific operational trip and deduct rider tokens atomically. First fetch ride-instance details, choose one item from `trips[]`, then send its `tripId` here.",
             "url": "{{baseUrl}}/api/bookings",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"pickupPointId\": \"{{pickupPointId}}\",\n  \"seatCount\": 1\n}"
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"pickupPointId\": \"{{pickupPointId}}\",\n  \"seatCount\": 1\n}"
             }
           }
         },
@@ -426,11 +439,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Create pending seat lock with TTL via DB RPC.",
+            "description": "Create a pending seat lock against a specific operational trip. Use `tripId` from the ride-instance details response; ride instances cannot be locked directly.",
             "url": "{{baseUrl}}/api/bookings/lock",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"rideInstanceId\": \"{{rideInstanceId}}\",\n  \"seatCount\": 1\n}"
+              "raw": "{\n  \"tripId\": \"{{tripId}}\",\n  \"seatCount\": 1\n}"
             }
           }
         },
@@ -472,7 +485,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "List current authenticated rider bookings.",
+            "description": "List the authenticated rider's bookings. Results are trip-first and include trip plus ride-instance summary context.",
             "url": "{{baseUrl}}/api/bookings/me"
           }
         },
@@ -490,7 +503,7 @@
                 "value": "application/json"
               }
             ],
-            "description": "Driver marks booking as BOARDED or NO_SHOW.",
+            "description": "Driver finalizes a rider's boarding state on a booked trip. Use `BOARDED` or `NO_SHOW`.",
             "url": "{{baseUrl}}/api/bookings/{{bookingId}}/board",
             "body": {
               "mode": "raw",
@@ -502,7 +515,7 @@
     },
     {
       "name": "Ride Instances",
-      "description": "Public rider-facing route availability and ride instance listing endpoints.",
+      "description": "Rider-facing schedule endpoints. A ride instance is the planning template; nested `trips` are the operational/bookable units returned by these endpoints.",
       "item": [
         {
           "name": "List Ride Instances",
@@ -514,7 +527,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "List ride instances by route/date for riders.",
+            "description": "List rider-facing ride-instance templates. Each ride instance is a schedule parent and includes nested `trips[]` that are the actual bookable options.",
             "url": "{{baseUrl}}/api/ride-instances?routeId={{routeId}}&rideDate={{rideDate}}"
           }
         },
@@ -531,12 +544,62 @@
             "description": "Get route availability snapshot for date.",
             "url": "{{baseUrl}}/api/routes/{{routeId}}/availability?date={{date}}"
           }
+        },
+        {
+          "name": "Get Ride Instance Details",
+          "request": {
+            "description": "Get rider-facing ride-instance details. Response includes route info, pickup points, and nested operational `trips[]`. Riders must choose a `tripId` from that list before booking.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/ride-instances/{{rideInstanceId}}"
+          }
+        },
+        {
+          "name": "Route Pickup Points (Rider)",
+          "request": {
+            "description": "List pickup points for a route (rider-facing).",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/routes/{{routeId}}/pickup-points"
+          }
+        },
+        {
+          "name": "Batch Boarding (Driver)",
+          "request": {
+            "description": "Batch update passenger boarding status for a driver-managed ride context. Use booking IDs for passengers on trips created under the selected ride instance.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "PATCH",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"updates\": [\n    {\n      \"bookingId\": \"{{bookingId}}\",\n      \"status\": \"BOARDED\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/ride-instances/{{rideInstanceId}}/boarding"
+          }
         }
       ]
     },
     {
       "name": "Drivers",
-      "description": "Driver-specific operational endpoints including manifests and live location updates.",
+      "description": "Driver operational endpoints. Manifest, manifest detail, and trip history are trip-first and expose `tripId` plus `driverTripId`.",
       "item": [
         {
           "name": "Driver Manifest (Self)",
@@ -548,7 +611,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "Get authenticated driver daily manifest.",
+            "description": "Get the authenticated driver's manifest summary for a date. Response is trip-first: one item per trip with `tripId`, `driverTripId`, route summary, vehicle plate, capacity, and passenger counts.",
             "url": "{{baseUrl}}/api/drivers/me/manifest?date={{date}}"
           }
         },
@@ -562,7 +625,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "Get manifest by driver id (driver can only access own; admin permitted by policy).",
+            "description": "Get the authenticated driver's manifest detail for a ride instance context. Response naming is trip-first and includes the driver's assigned trip, passengers, pickup points, and boarding states.",
             "url": "{{baseUrl}}/api/drivers/{{driverId}}/manifest?date={{date}}"
           }
         },
@@ -580,7 +643,7 @@
                 "value": "application/json"
               }
             ],
-            "description": "Update realtime driver location for a ride instance.",
+            "description": "Update realtime driver location for a ride instance currently being operated by the driver. This still uses the ride-instance context for the live monitor path.",
             "url": "{{baseUrl}}/api/drivers/location",
             "body": {
               "mode": "raw",
@@ -608,6 +671,20 @@
               "mode": "raw",
               "raw": "{\n  \"nin\": \"12345678901\",\n  \"licenseNumber\": \"DRV-12345\",\n  \"address\": \"No 1, Lekki\"\n}"
             }
+          }
+        },
+        {
+          "name": "Driver Manifest (Ride Details)",
+          "request": {
+            "description": "Driver-only trip manifest detail for the authenticated driver on the given ride instance. Includes trip summary, `driverTripId`, assigned vehicle, capacity, passengers, and boarding statuses.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/drivers/me/manifest/{{rideInstanceId}}"
           }
         }
       ]
@@ -834,7 +911,7 @@
     },
     {
       "name": "Admin Ride Instances",
-      "description": "Admin ride scheduling, status operations, manifests, realtime snapshot, and CSV export.",
+      "description": "Admin schedule management flow: create a ride instance template first, open ride details, assign eligible drivers, and let the backend create trips automatically from active driver-vehicle assignments.",
       "item": [
         {
           "name": "List Ride Instances",
@@ -846,7 +923,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "List ride instances with availability and enrichments.",
+            "description": "List ride-instance templates for admin. Response highlights trip count and created trip IDs instead of ride-level seat availability.",
             "url": "{{baseUrl}}/api/admin/ride-instances?page={{page}}&limit={{limit}}&routeId={{routeId}}&rideDate={{rideDate}}&status={{status}}"
           }
         },
@@ -864,11 +941,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Create single departure ride instance.",
+            "description": "Step 1 of the admin scheduling flow. Create a ride-instance template only with route, date, departure time, and time slot. Do not send driverId or vehicleId.",
             "url": "{{baseUrl}}/api/admin/ride-instances",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTime\": \"06:30\"\n}"
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTime\": \"06:30\",\n  \"timeSlot\": \"morning\"\n}"
             }
           }
         },
@@ -886,11 +963,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Create multiple departures for one date.",
+            "description": "Create multiple ride-instance templates for one route/date/time-slot bucket. Drivers are assigned later from ride details, which then creates trips automatically.",
             "url": "{{baseUrl}}/api/admin/ride-instances/bulk",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTimes\": [\n    \"06:30\",\n    \"14:00\",\n    \"17:30\"\n  ]\n}"
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTimes\": [\n    \"06:30\",\n    \"07:00\",\n    \"07:30\"\n  ],\n  \"timeSlot\": \"morning\"\n}"
             }
           }
         },
@@ -971,6 +1048,70 @@
             "description": "Get realtime state projection for ride monitor.",
             "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/realtime"
           }
+        },
+        {
+          "name": "Ride Details (Admin)",
+          "request": {
+            "description": "Open the admin ride-details view. Response contains the ride template summary plus `drivers[]` and `trips[]`. Each assigned driver includes `driverTripId`, assigned vehicle, and vehicle seat count.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/details"
+          }
+        },
+        {
+          "name": "List Ride Drivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Step 2 of the admin assignment flow. List active driver assignments for a ride instance. Each assignment is tied to a created trip and includes `driverTripId` plus the driver's assigned vehicle.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers"
+          }
+        },
+        {
+          "name": "Assign Drivers To Ride",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Step 3 of the admin assignment flow. Assign one or more eligible drivers to a ride instance in a single request. Each successful assignment creates one trip automatically from the driver's active vehicle assignment.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverIds\": [\n    \"{{driverId}}\",\n    \"{{driverId2}}\"\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Unassign Driver From Ride",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Step 4 of the admin assignment flow. Remove one driver from the ride instance. The associated trip is cancelled and the driver becomes eligible again if no slot conflict remains.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers/{{driverId}}"
+          }
         }
       ]
     },
@@ -988,7 +1129,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "Paginated drivers list.",
+            "description": "Paginated admin drivers list. Supports `rideInstanceId`, `rideDate`, and `timeSlot` query params so the UI/Postman can fetch only drivers eligible for assignment to a specific ride instance.",
             "url": "{{baseUrl}}/api/admin/drivers?page={{page}}&limit={{limit}}&status={{status}}&q={{q}}"
           }
         },
@@ -1274,7 +1415,7 @@
     },
     {
       "name": "Admin Assignments",
-      "description": "Admin assignment endpoints for driver↔vehicle and driver↔route mapping.",
+      "description": "Admin assignment endpoints for driver\u2194vehicle and driver\u2194route mapping.",
       "item": [
         {
           "name": "Assign Driver to Vehicle",
@@ -1663,6 +1804,26 @@
           }
         }
       ]
+    },
+    {
+      "name": "Trips",
+      "item": [
+        {
+          "name": "Trip History (Driver/Rider)",
+          "request": {
+            "description": "Trip-first history endpoint. Drivers receive operational trips; riders receive bookings with nested trip and ride-instance summaries.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET",
+            "url": "{{baseUrl}}/api/trips/me?page=1&limit=20"
+          }
+        }
+      ],
+      "description": "Trip-first history and operational reporting endpoints for drivers and riders."
     }
   ]
 }

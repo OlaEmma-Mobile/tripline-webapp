@@ -135,6 +135,11 @@ export default function AdminDashboardPage() {
                 <p className="text-xs text-muted-foreground">
                   {String(ride.ride_date ?? '')} {String(ride.departure_time ?? '')}
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Drivers: {Array.isArray((ride as any).driverNames) && (ride as any).driverNames.length
+                    ? (ride as any).driverNames.join(', ')
+                    : 'Unassigned'}
+                </p>
               </div>
             ))}
           </div>

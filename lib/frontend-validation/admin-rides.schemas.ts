@@ -32,10 +32,10 @@ export const adminRideMonitorActionClientSchema = z.object({
 
 export const adminRideCreateClientSchema = z.object({
   routeId: z.string().uuid('Route ID must be a valid UUID'),
-  driverId: z.string().uuid('Driver ID must be a valid UUID'),
   rideDate: isoDateSchema.refine((value) => {
     const today = getLocalTodayIso();
     return value >= today;
   }, 'Ride date cannot be in the past'),
   departureTime: departureTimeSchema,
+  timeSlot: z.enum(['morning', 'afternoon', 'evening']),
 });

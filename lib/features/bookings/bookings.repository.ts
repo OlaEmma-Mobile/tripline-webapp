@@ -13,6 +13,7 @@ import type {
 
 interface LockSeatRpcRow {
   booking_id: string;
+  trip_id: string;
   ride_instance_id: string;
   rider_id: string;
   status: BookingRecord['status'];
@@ -25,6 +26,7 @@ interface LockSeatRpcRow {
 
 interface CreateBookingRpcRow {
   booking_id: string;
+  trip_id: string;
   ride_instance_id: string;
   rider_id: string;
   pickup_point_id: string;
@@ -50,7 +52,7 @@ export class BookingsRepository {
    */
   async createBooking(input: CreateBookingInput, riderId: string): Promise<CreateBookingResult> {
     const { data, error } = await supabaseAdmin.rpc('create_booking_with_tokens', {
-      p_ride_instance_id: input.rideInstanceId,
+      p_trip_id: input.tripId,
       p_rider_id: riderId,
       p_pickup_point_id: input.pickupPointId,
       p_seat_count: input.seatCount,
@@ -67,6 +69,7 @@ export class BookingsRepository {
 
     return {
       bookingId: row.booking_id,
+      tripId: row.trip_id,
       rideInstanceId: row.ride_instance_id,
       riderId: row.rider_id,
       pickupPointId: row.pickup_point_id,
@@ -89,7 +92,7 @@ export class BookingsRepository {
    */
   async lockSeat(input: LockSeatInput, riderId: string): Promise<LockSeatResult> {
     const { data, error } = await supabaseAdmin.rpc('lock_seat', {
-      p_ride_instance_id: input.rideInstanceId,
+      p_trip_id: input.tripId,
       p_rider_id: riderId,
       p_seat_count: input.seatCount,
       p_lock_minutes: input.lockMinutes ?? 5,
@@ -106,6 +109,7 @@ export class BookingsRepository {
 
     return {
       bookingId: row.booking_id,
+      tripId: row.trip_id,
       rideInstanceId: row.ride_instance_id,
       riderId: row.rider_id,
       status: row.status,
@@ -172,7 +176,7 @@ export class BookingsRepository {
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(route_id, vehicle_id, ride_date, departure_time, status), pickup_point:pickup_points(id, name, token_cost)'
+        'id, trip_id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, trip:trips(id, trip_id, driver_trip_id, vehicle_id), ride_instance:ride_instances(route_id, vehicle_id, ride_date, departure_time, status), pickup_point:pickup_points(id, name, token_cost)'
       )
       .eq('rider_id', riderId)
       .order('created_at', { ascending: false })
@@ -193,7 +197,7 @@ export class BookingsRepository {
     const { data, error } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, ride_instance:ride_instances(id, driver_id)'
+        'id, trip_id, ride_instance_id, rider_id, pickup_point_id, token_cost, status, seat_count, seat_number, lock_expires_at, confirmed_at, cancelled_at, boarded_at, no_show_marked_at, created_at, updated_at, trip:trips(id), ride_instance:ride_instances(id)'
       )
       .eq('id', bookingId)
       .maybeSingle<DriverBookingRecord>();
@@ -253,9 +257,9 @@ export class BookingsRepository {
 
     return {
       ...row,
+      trip: row.trip_id ? { id: row.trip_id } : null,
       ride_instance: {
         id: row.ride_instance_id,
-        driver_id: input.driverId,
       },
     };
   }

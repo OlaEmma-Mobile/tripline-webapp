@@ -4,7 +4,10 @@ import {
 } from '@/lib/features/drivers/driver-booking-auth';
 import { logStep } from '@/lib/utils/logger';
 import { realtimeService } from '@/lib/features/realtime/realtime.service';
+import { rideInstancesRepository } from '@/lib/features/ride-instances/ride-instances.repository';
+import { assignmentsRepository } from '@/lib/features/assignments/assignments.repository';
 import { bookingsRepository, BookingsRepository } from './bookings.repository';
+import { z } from 'zod';
 import type {
   BookingDTO,
   BookingRecord,
@@ -22,6 +25,7 @@ import type {
 function mapBooking(record: BookingRecord): BookingDTO {
   return {
     id: record.id,
+    tripId: record.trip_id,
     rideInstanceId: record.ride_instance_id,
     riderId: record.rider_id,
     pickupPointId: record.pickup_point_id,
@@ -43,11 +47,13 @@ function mapBooking(record: BookingRecord): BookingDTO {
  * mapBookingWithRide Pure helper that transforms data between transport, domain, and persistence shapes.
  */
 function mapBookingWithRide(record: BookingWithRideRecord): BookingDTO & {
+  trip: BookingWithRideRecord['trip'];
   rideInstance: BookingWithRideRecord['ride_instance'];
 } {
   return {
     ...mapBooking(record),
     pickupPointName: record.pickup_point?.name ?? null,
+    trip: record.trip,
     rideInstance: record.ride_instance,
   };
 }
@@ -56,10 +62,12 @@ function mapBookingWithRide(record: BookingWithRideRecord): BookingDTO & {
  * mapDriverBooking Pure helper that transforms data between transport, domain, and persistence shapes.
  */
 function mapDriverBooking(record: DriverBookingRecord): BookingDTO & {
+  trip: DriverBookingRecord['trip'];
   rideInstance: DriverBookingRecord['ride_instance'];
 } {
   return {
     ...mapBooking(record),
+    trip: record.trip,
     rideInstance: record.ride_instance,
   };
 }
@@ -86,8 +94,8 @@ export class BookingsService {
     if (message.includes('BOOKING_NOT_FOUND')) {
       throw new AppError('Booking not found', 404);
     }
-    if (message.includes('RIDE_INSTANCE_NOT_FOUND')) {
-      throw new AppError('Ride instance not found', 404);
+    if (message.includes('TRIP_NOT_FOUND')) {
+      throw new AppError('Trip not found', 404);
     }
     if (message.includes('BOOKING_ALREADY_CONFIRMED')) {
       throw new AppError('Booking already confirmed', 409);
@@ -106,6 +114,9 @@ export class BookingsService {
     }
     if (message.includes('RIDE_NOT_BOOKABLE')) {
       throw new AppError('Ride is not open for booking', 409);
+    }
+    if (message.includes('RIDE_NOT_READY')) {
+      throw new AppError('Ride is not ready for booking yet', 409);
     }
     if (message.includes('PICKUP_POINT_REQUIRED')) {
       throw new AppError('Pickup point is required', 400);
@@ -135,7 +146,7 @@ export class BookingsService {
   }
 
   /**
-   * Lock seats for a rider on a ride instance.
+   * Lock seats for a rider on a trip.
    * @param input Lock payload.
    * @param riderId Rider user id.
    * @returns Booking lock result including remaining seats.
@@ -202,9 +213,11 @@ export class BookingsService {
   /**
    * List current rider bookings.
    * @param riderId Rider user id.
-   * @returns Rider bookings with minimal ride instance details.
+   * @returns Rider bookings with trip and ride details.
    */
-  async listMyBookings(riderId: string): Promise<Array<BookingDTO & { rideInstance: BookingWithRideRecord['ride_instance'] }>> {
+  async listMyBookings(
+    riderId: string
+  ): Promise<Array<BookingDTO & { trip: BookingWithRideRecord['trip']; rideInstance: BookingWithRideRecord['ride_instance'] }>> {
     const rows = await this.repo.listByRider(riderId);
     return rows.map(mapBookingWithRide);
   }
@@ -263,6 +276,42 @@ export class BookingsService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Batch update passenger boarding statuses for a ride instance.
+   * @param rideInstanceId Ride instance id.
+   * @param driverId Authenticated driver user id.
+   * @param updates List of bookingId/status updates.
+   */
+  async markDriverBoardingBatch(
+    rideInstanceId: string,
+    driverId: string,
+    updates: Array<{ bookingId: string; status: string }>
+  ): Promise<Array<BookingDTO & { rideInstance: DriverBookingRecord['ride_instance'] }>> {
+    const ride = await rideInstancesRepository.getById(rideInstanceId);
+    if (!ride) {
+      throw new AppError('Ride instance not found', 404);
+    }
+    const isAssigned = await assignmentsRepository.isDriverAssignedToRide(rideInstanceId, driverId);
+    if (!isAssigned) {
+      throw new AppError('Forbidden', 403);
+    }
+
+    const results: Array<BookingDTO & { rideInstance: DriverBookingRecord['ride_instance'] }> = [];
+    for (const update of updates) {
+      const booking = await this.repo.getBookingForDriver(update.bookingId);
+      if (!booking) {
+        throw new AppError('Booking not found', 404);
+      }
+      if (booking.ride_instance_id !== rideInstanceId) {
+        throw new AppError('Booking does not belong to this ride instance', 400);
+      }
+      const updated = await this.markDriverBoarding(update.bookingId, driverId, update.status);
+      results.push(updated);
+    }
+
+    return results;
   }
 }
 

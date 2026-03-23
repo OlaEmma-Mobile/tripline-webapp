@@ -6,6 +6,10 @@ import type { DriverKycRecord, OtpPurpose, OtpRecord, RefreshTokenRecord, UserRe
  * Repository for auth-related persistence via Supabase.
  */
 export class AuthRepository {
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   /** Persist a new user record. */
   async createUser({
     firstName,
@@ -22,12 +26,13 @@ export class AuthRepository {
     role: UserRole;
     passwordHash: string;
   }): Promise<UserRecord> {
+    const normalizedEmail = this.normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from('users')
       .insert({
         first_name: firstName,
         last_name: lastName,
-        email,
+        email: normalizedEmail,
         phone: phone ?? null,
         role,
         password_hash: passwordHash,
@@ -43,16 +48,19 @@ export class AuthRepository {
 
   /** Find a user by email. */
   async findUserByEmail(email: string): Promise<UserRecord | null> {
+    const normalizedEmail = this.normalizeEmail(email);
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('email', email)
-      .maybeSingle<UserRecord>();
+      .ilike('email', normalizedEmail)
+      .order('created_at', { ascending: false })
+      .limit(2)
+      .returns<UserRecord[]>();
 
     if (error) {
       throw new AppError('Unable to fetch user', 500);
     }
-    return data ?? null;
+    return data?.[0] ?? null;
   }
 
   /** Find a user by id. */

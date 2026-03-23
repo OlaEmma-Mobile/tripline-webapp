@@ -4,6 +4,7 @@ import type {
   AdminBookingProblemInput,
   AdminBookingRefundInput,
   AdminBookingsFilters,
+  AdminRideInstanceDetails,
   AdminSettingsDTO,
   AdminSettingsInput,
   AdminTokensFilters,
@@ -203,6 +204,13 @@ export class AdminOpsService {
     body.push(`"TOTAL_TOKENS_CONSUMED",,,,,,${total},`);
 
     return [header.join(','), ...body].join('\n');
+  }
+
+  /**
+   * Returns full ride instance details for admin view.
+   */
+  async getRideInstanceDetails(rideInstanceId: string): Promise<AdminRideInstanceDetails> {
+    return this.repo.getRideInstanceDetails(rideInstanceId);
   }
 
   /**

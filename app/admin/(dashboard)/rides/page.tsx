@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
+import { RideDetailsDrawer } from '@/components/admin/ride-details-drawer';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -25,14 +26,21 @@ import { adminQueryKeys } from '@/lib/hooks/admin-query-keys';
 
 interface RideRow {
   id: string;
+  rideId?: string;
   routeName?: string;
   departureTime: string;
   rideDate: string;
-  driverName?: string | null;
-  vehiclePlate?: string;
-  availableSeats: number;
+  timeSlot?: string;
+  driverNames?: string[];
   status: string;
   pickupPointsCount?: number;
+  assignedDriverCount?: number;
+  trips?: Array<{
+    id: string;
+    tripId: string;
+    driverTripId: string;
+    availableSeats: number;
+  }>;
 }
 
 interface RideListPayload {
@@ -40,21 +48,9 @@ interface RideListPayload {
   total: number;
 }
 
-interface DriversPayload {
-  items: SimpleOption[];
-  total: number;
-}
-
 interface SimpleOption {
   id: string;
   name?: string;
-  firstName?: string;
-  lastName?: string;
-  assignedVehicle?: {
-    vehicleId: string;
-    registrationNumber: string;
-    assignedAt: string;
-  } | null;
 }
 
 export default function AdminRidesPage() {
@@ -72,10 +68,11 @@ export default function AdminRidesPage() {
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     routeId: '',
-    driverId: '',
     rideDate: today,
     departureTime: '06:30',
+    timeSlot: 'morning',
   });
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [pendingRideAction, setPendingRideAction] = useState<{ rideId: string; action: 'boarding' | 'cancel' | 'delete' } | null>(null);
 
   const ridesQuery = useQuery({
@@ -110,14 +107,17 @@ export default function AdminRidesPage() {
         total: response.data.total,
         items: (response.data.items ?? []).map((item: any) => ({
           id: item.id ?? item.rideInstanceId ?? item.ride_instance_id,
+          rideId: item.rideId ?? item.ride_id,
           routeName: item.routeName ?? item.route_name,
           departureTime: item.departureTime ?? item.departure_time,
           rideDate: item.rideDate ?? item.ride_date,
-          driverName: item.driverName ?? item.driver_name ?? null,
-          vehiclePlate: item.vehiclePlate ?? item.vehicle_plate,
-          availableSeats: item.availableSeats ?? item.available_seats ?? 0,
+          timeSlot: item.timeSlot ?? item.time_slot,
+          driverNames: item.driverNames ?? item.driver_names ?? [],
           status: item.status,
           pickupPointsCount: item.pickupPointsCount ?? item.pickup_points_count ?? 0,
+          assignedDriverCount:
+            item.assignedDriverCount ?? item.assigned_driver_count ?? (item.driverNames ?? item.driver_names ?? []).length,
+          trips: item.trips ?? [],
         })),
       };
     },
@@ -147,7 +147,7 @@ export default function AdminRidesPage() {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.rides({ date, status, page, limit }) });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'rides'] });
     },
   });
 
@@ -161,7 +161,7 @@ export default function AdminRidesPage() {
       }
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.rides({ date, status, page, limit }) });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'rides'] });
     },
   });
 
@@ -176,20 +176,6 @@ export default function AdminRidesPage() {
         throw new Error(response.message || 'Unable to load routes');
       }
       return response.data.items;
-    },
-  });
-
-  const driversQuery = useQuery({
-    queryKey: adminQueryKeys.drivers({ page: 1, limit: 100, source: 'ride-create' }),
-    queryFn: async ({ signal }): Promise<DriversPayload> => {
-      const response = await apiRequest<DriversPayload>(
-        '/api/admin/drivers?page=1&limit=100',
-        { signal }
-      );
-      if (response.hasError || !response.data) {
-        throw new Error(response.message || 'Unable to load drivers');
-      }
-      return response.data;
     },
   });
 
@@ -209,20 +195,13 @@ export default function AdminRidesPage() {
       setCreateFieldErrors({});
       setCreateFormError(null);
 
-      if (!selectedDriver?.assignedVehicle?.vehicleId) {
-        setCreateFieldErrors({ driverId: ['Selected driver must have an assigned vehicle'] });
-        setCreateFormError('Selected driver must have an assigned vehicle.');
-        throw new Error('Selected driver must have an assigned vehicle.');
-      }
-
       const response = await apiRequest('/api/admin/ride-instances', {
         method: 'POST',
         body: JSON.stringify({
           routeId: validation.data?.routeId,
-          vehicleId: selectedDriver?.assignedVehicle?.vehicleId,
-          driverId: validation.data?.driverId,
           rideDate: validation.data?.rideDate,
           departureTime: validation.data?.departureTime,
+          timeSlot: validation.data?.timeSlot,
         }),
       });
 
@@ -233,7 +212,7 @@ export default function AdminRidesPage() {
     },
     onSuccess: async () => {
       setCreateOpen(false);
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.rides({ date }) });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'rides'] });
     },
   });
 
@@ -241,10 +220,6 @@ export default function AdminRidesPage() {
   const total = ridesQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const routeOptions = routesQuery.data ?? [];
-  const driverOptions = (driversQuery.data?.items ?? []).filter((driver) =>
-    Boolean(driver.assignedVehicle?.vehicleId)
-  );
-  const selectedDriver = driverOptions.find((driver) => driver.id === createForm.driverId);
 
   function getRideStatusClass(statusValue: string): string {
     switch (statusValue) {
@@ -350,11 +325,12 @@ export default function AdminRidesPage() {
               <thead>
                 <tr className="text-left text-muted-foreground">
                   <th className="px-3 py-2">Route</th>
+                  <th className="px-3 py-2">Ride ID</th>
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Time</th>
-                  <th className="px-3 py-2">Driver</th>
-                  <th className="px-3 py-2">Vehicle</th>
-                  <th className="px-3 py-2">Available Seats</th>
+                  <th className="px-3 py-2">Time Slot</th>
+                  <th className="px-3 py-2">Drivers</th>
+                  <th className="px-3 py-2">Trips</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Stops</th>
                   <th className="px-3 py-2">Actions</th>
@@ -368,17 +344,34 @@ export default function AdminRidesPage() {
                       return (
                         <>
                     <td className="px-3 py-3">{ride.routeName ?? '-'}</td>
+                    <td className="px-3 py-3">{ride.rideId ?? '-'}</td>
                     <td className="px-3 py-3">{ride.rideDate}</td>
                     <td className="px-3 py-3">{ride.departureTime}</td>
-                    <td className="px-3 py-3">{ride.driverName ?? '-'}</td>
-                    <td className="px-3 py-3">{ride.vehiclePlate ?? '-'}</td>
-                    <td className="px-3 py-3">{ride.availableSeats}</td>
+                    <td className="px-3 py-3">{ride.timeSlot ?? '-'}</td>
+                    <td className="px-3 py-3">
+                      {ride.driverNames?.length
+                        ? `${ride.driverNames.join(', ')} (${ride.assignedDriverCount ?? ride.driverNames.length})`
+                        : '0 assigned'}
+                    </td>
+                    <td className="px-3 py-3">
+                      {ride.trips?.length
+                        ? ride.trips.map((trip) => trip.tripId).join(', ')
+                        : 'No trips yet'}
+                    </td>
                     <td className="px-3 py-3">
                       <span className={`rounded-full px-2 py-1 text-xs ${getRideStatusClass(ride.status)}`}>{ride.status}</span>
                     </td>
                     <td className="px-3 py-3">{ride.pickupPointsCount ?? 0}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={rowBusy}
+                          onClick={() => setSelectedRideId(ride.id)}
+                        >
+                          Details
+                        </Button>
                         <Button variant="outline" size="sm" asChild disabled={rowBusy}>
                           <Link href={`/admin/rides/${ride.id}`}>Live monitor</Link>
                         </Button>
@@ -507,37 +500,9 @@ export default function AdminRidesPage() {
               {createFieldErrors.routeId ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.routeId[0]}</p> : null}
             </label>
 
-            <label className="block text-sm">
-              <span className="mb-1 block font-semibold">Driver</span>
-              <select
-                className="w-full rounded-lg border border-input bg-background px-3 py-2"
-                value={createForm.driverId}
-                onChange={(event) => {
-                  const nextDriverId = event.target.value;
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    driverId: nextDriverId,
-                  }));
-                }}
-              >
-                <option value="">Select assigned driver</option>
-                {driverOptions.map((driver) => (
-                  <option key={driver.id} value={driver.id}>
-                    {`${[driver.firstName, driver.lastName].filter(Boolean).join(' ') || driver.id}${
-                      driver.assignedVehicle?.registrationNumber
-                        ? ` (${driver.assignedVehicle.registrationNumber})`
-                        : ' (No vehicle)'
-                    }`}
-                  </option>
-                ))}
-              </select>
-              {createFieldErrors.driverId ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.driverId[0]}</p> : null}
-              {selectedDriver?.assignedVehicle?.registrationNumber ? (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Vehicle will be auto-used: {selectedDriver.assignedVehicle.registrationNumber}
-                </p>
-              ) : null}
-            </label>
+            <p className="rounded-xl border border-dashed border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+              Vehicle and drivers are assigned after creation from the ride details drawer.
+            </p>
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm">
@@ -562,6 +527,19 @@ export default function AdminRidesPage() {
                 {createFieldErrors.departureTime ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.departureTime[0]}</p> : null}
               </label>
             </div>
+            <label className="block text-sm">
+              <span className="mb-1 block font-semibold">Time Slot</span>
+              <select
+                className="w-full rounded-lg border border-input bg-background px-3 py-2"
+                value={createForm.timeSlot}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, timeSlot: event.target.value }))}
+              >
+                <option value="morning">Morning</option>
+                <option value="afternoon">Afternoon</option>
+                <option value="evening">Evening</option>
+              </select>
+              {createFieldErrors.timeSlot ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.timeSlot[0]}</p> : null}
+            </label>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createMutation.isPending}>
@@ -573,6 +551,14 @@ export default function AdminRidesPage() {
           </DialogFooter>
         </DialogContent>
       </DialogRoot>
+
+      <RideDetailsDrawer
+        open={Boolean(selectedRideId)}
+        rideInstanceId={selectedRideId}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRideId(null);
+        }}
+      />
     </div>
   );
 }

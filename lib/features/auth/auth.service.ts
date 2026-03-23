@@ -27,6 +27,10 @@ const ADMIN_ROLES: UserRole[] = ['admin', 'sub_admin'];
 export class AuthService {
   constructor(private readonly repo: AuthRepository) { }
 
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   /** Register a rider or driver and send verification OTP. */
   async registerUser({
     firstName,
@@ -43,8 +47,9 @@ export class AuthService {
     password: string;
     role: 'rider' | 'driver';
   }): Promise<{ user: { id: string }; verifyToken: string }> {
+    const normalizedEmail = this.normalizeEmail(email);
     logStep('checking existing user');
-    const existing = await this.repo.findUserByEmail(email);
+    const existing = await this.repo.findUserByEmail(normalizedEmail);
     if (existing) {
       throw new AppError('Email already registered', 409);
     }
@@ -55,14 +60,14 @@ export class AuthService {
     const user = await this.repo.createUser({
       firstName,
       lastName,
-      email,
+      email: normalizedEmail,
       phone,
       role: role as UserRole, 
       passwordHash,
     });
 
     logStep('issuing verification otp');
-    const { verifyToken } = await this.issueOtp({ userId: user.id, email, firstName, purpose: 'verify_email' });
+    const { verifyToken } = await this.issueOtp({ userId: user.id, email: normalizedEmail, firstName, purpose: 'verify_email' });
 
     logStep('creating empty wallet');
     await walletRepository.upsertWallet(user.id, 0);
@@ -137,7 +142,8 @@ export class AuthService {
     account_status: string;
     driver_kyc_status: string | null;
   }> {
-    const user = await this.repo.findUserByEmailWithKyc(email);
+    const normalizedEmail = this.normalizeEmail(email);
+    const user = await this.repo.findUserByEmailWithKyc(normalizedEmail);
     if (!user) {
       throw new AppError('Invalid credentials', 401);
     }

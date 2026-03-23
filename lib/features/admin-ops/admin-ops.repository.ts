@@ -1,9 +1,11 @@
 import { supabaseAdmin } from '@/lib/db/supabase';
 import { AppError } from '@/lib/utils/errors';
+import { tripsRepository } from '@/lib/features/trips/trips.repository';
 import type {
   AdminBookingProblemInput,
   AdminBookingRefundInput,
   AdminBookingsFilters,
+  AdminRideInstanceDetails,
   AdminRideManifestRow,
   AdminSettingsInput,
   AdminSettingsRecord,
@@ -30,6 +32,180 @@ interface AdminRefundBookingRpcRow {
  * Admin operational repository for bookings/users/tokens/settings queries.
  */
 export class AdminOpsRepository {
+  /**
+   * Detects whether the ride-driver assignment table is missing in the current DB state.
+   */
+  private isMissingRideDriverAssignmentsTable(error: { message?: string; code?: string } | null): boolean {
+    if (!error) return false;
+    const message = (error.message ?? '').toLowerCase();
+    return error.code === '42P01' || message.includes('ride_instance_driver_assignments');
+  }
+
+  /**
+   * Loads assigned driver records for ride instances.
+   */
+  private async getDriversByRideInstanceIds(
+    rideInstanceIds: string[]
+  ): Promise<
+    Record<
+      string,
+      Array<{
+        id: string;
+        driverTripId: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string | null;
+        assignedVehicle: {
+          vehicleId: string;
+          registrationNumber: string;
+          model: string | null;
+          capacity: number;
+          assignedAt: string;
+        } | null;
+      }>
+    >
+  > {
+    if (rideInstanceIds.length === 0) return {};
+
+    const { data: assignments, error: assignmentsError } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+.select('ride_instance_id, driver_id, driver_trip_id')
+      .in('ride_instance_id', rideInstanceIds)
+      .eq('status', 'active')
+.returns<Array<{ ride_instance_id: string; driver_id: string; driver_trip_id: string }>>();
+
+    if (this.isMissingRideDriverAssignmentsTable(assignmentsError)) {
+      throw new AppError('Ride driver assignment schema not migrated', 500);
+    }
+    if (assignmentsError) {
+      throw new AppError('Unable to fetch ride driver assignments', 500);
+    }
+
+    const driverIds = Array.from(new Set((assignments ?? []).map((row) => row.driver_id).filter(Boolean)));
+    if (driverIds.length === 0) {
+      return {};
+    }
+
+    const { data: drivers, error: driversError } = await supabaseAdmin
+      .from('users')
+      .select('id, first_name, last_name, email, phone')
+      .in('id', driverIds)
+      .returns<
+        Array<{
+          id: string;
+          first_name: string;
+          last_name: string;
+          email: string;
+          phone: string | null;
+        }>
+      >();
+
+    if (driversError) {
+      throw new AppError('Unable to fetch drivers for ride assignments', 500);
+    }
+
+    const driversById = new Map<
+      string,
+      { id: string; first_name: string; last_name: string; email: string; phone: string | null }
+    >();
+    for (const driver of drivers ?? []) {
+      driversById.set(driver.id, driver);
+    }
+
+    const { data: vehicleAssignments, error: vehicleAssignmentError } = await supabaseAdmin
+      .from('driver_vehicle_assignments')
+      .select('driver_id, vehicle_id, assigned_at, vehicle:vehicles(id, registration_number, model, capacity)')
+      .in('driver_id', driverIds)
+      .eq('status', 'active')
+      .returns<
+        Array<{
+          driver_id: string;
+          vehicle_id: string;
+          assigned_at: string;
+          vehicle: {
+            id: string;
+            registration_number: string;
+            model: string | null;
+            capacity: number;
+          } | null;
+        }>
+      >();
+
+    if (vehicleAssignmentError) {
+      throw new AppError('Unable to fetch ride driver vehicles', 500);
+    }
+
+    const vehicleAssignmentsByDriver = new Map<
+      string,
+      {
+        vehicleId: string;
+        registrationNumber: string;
+        model: string | null;
+        capacity: number;
+        assignedAt: string;
+      }
+    >();
+    for (const assignment of vehicleAssignments ?? []) {
+      if (!assignment.vehicle || vehicleAssignmentsByDriver.has(assignment.driver_id)) continue;
+      vehicleAssignmentsByDriver.set(assignment.driver_id, {
+        vehicleId: assignment.vehicle_id,
+        registrationNumber: assignment.vehicle.registration_number,
+        model: assignment.vehicle.model,
+        capacity: assignment.vehicle.capacity,
+        assignedAt: assignment.assigned_at,
+      });
+    }
+
+    const out: Record<
+      string,
+      Array<{
+        id: string;
+        driverTripId: string;
+        first_name: string;
+        last_name: string;
+        email: string;
+        phone: string | null;
+        assignedVehicle: {
+          vehicleId: string;
+          registrationNumber: string;
+          model: string | null;
+          capacity: number;
+          assignedAt: string;
+        } | null;
+      }>
+    > = {};
+
+    for (const row of assignments ?? []) {
+      const driver = driversById.get(row.driver_id);
+      if (!driver) continue;
+      if (!out[row.ride_instance_id]) out[row.ride_instance_id] = [];
+      out[row.ride_instance_id].push({
+        ...driver,
+        driverTripId: row.driver_trip_id,
+        assignedVehicle: vehicleAssignmentsByDriver.get(driver.id) ?? null,
+      });
+    }
+
+    return out;
+  }
+
+  /**
+   * Loads assigned driver display names for ride instances.
+   */
+  private async getDriverNamesByRideInstanceIds(
+    rideInstanceIds: string[]
+  ): Promise<Record<string, string[]>> {
+    const driversByRide = await this.getDriversByRideInstanceIds(rideInstanceIds);
+    const out: Record<string, string[]> = {};
+    for (const [rideInstanceId, drivers] of Object.entries(driversByRide)) {
+      out[rideInstanceId] = drivers.map((driver) =>
+        `${driver.first_name ?? ''} ${driver.last_name ?? ''}`.trim() || driver.email
+      );
+    }
+    return out;
+  }
+
   /**
    * Detects missing-column errors for optional `fcm_token` field when migration is not yet applied.
    */
@@ -619,6 +795,145 @@ export class AdminOpsRepository {
   }
 
   /**
+   * Returns full ride instance details for admin view.
+   */
+  async getRideInstanceDetails(rideInstanceId: string): Promise<AdminRideInstanceDetails> {
+    const { data: ride, error: rideError } = await supabaseAdmin
+      .from('ride_instances')
+      .select(
+        'id, ride_id, route_id, ride_date, departure_time, time_slot, status, route:routes(id, name, from_name, to_name)'
+      )
+      .eq('id', rideInstanceId)
+      .maybeSingle<{
+        id: string;
+        ride_id: string;
+        route_id: string;
+        ride_date: string;
+        departure_time: string;
+        time_slot: string;
+        status: string;
+        route: { id: string; name: string; from_name: string; to_name: string } | null;
+      }>();
+
+    if (rideError) {
+      throw new AppError('Unable to fetch ride instance details', 500);
+    }
+    if (!ride) {
+      throw new AppError('Ride instance not found', 404);
+    }
+
+    const driversByRide = await this.getDriversByRideInstanceIds([rideInstanceId]);
+    const trips = await tripsRepository.listDetailedByRideInstanceId(rideInstanceId);
+    const tripIds = trips.map((trip) => trip.id);
+
+    let bookingsQuery = supabaseAdmin
+      .from('bookings')
+      .select('id, trip_id, ride_instance_id, rider_id, pickup_point_id, status, seat_count, token_cost, created_at')
+      .order('created_at', { ascending: true });
+
+    if (tripIds.length > 0) {
+      bookingsQuery = bookingsQuery.in('trip_id', tripIds);
+    } else {
+      bookingsQuery = bookingsQuery.eq('ride_instance_id', rideInstanceId);
+    }
+
+    const { data: bookings, error: bookingsError } = await bookingsQuery.returns<
+      Array<{
+        id: string;
+        trip_id: string | null;
+        ride_instance_id: string;
+        rider_id: string;
+        pickup_point_id: string | null;
+        status: string;
+        seat_count: number;
+        token_cost: number;
+        created_at: string;
+      }>
+    >();
+
+    if (bookingsError) {
+      throw new AppError('Unable to fetch ride bookings', 500);
+    }
+
+    const riderIds = Array.from(new Set((bookings ?? []).map((row) => row.rider_id).filter(Boolean)));
+    const pickupPointIds = Array.from(
+      new Set((bookings ?? []).map((row) => row.pickup_point_id).filter((value): value is string => Boolean(value)))
+    );
+
+    const [{ data: riders, error: ridersError }, { data: pickupPoints, error: pickupPointsError }] =
+      await Promise.all([
+        riderIds.length > 0
+          ? supabaseAdmin
+              .from('users')
+              .select('id, first_name, last_name, email, phone')
+              .in('id', riderIds)
+          : Promise.resolve({ data: [], error: null }),
+        pickupPointIds.length > 0
+          ? supabaseAdmin.from('pickup_points').select('id, name').in('id', pickupPointIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+    if (ridersError) {
+      throw new AppError('Unable to fetch ride booking riders', 500);
+    }
+    if (pickupPointsError) {
+      throw new AppError('Unable to fetch ride booking pickup points', 500);
+    }
+
+    const ridersById = new Map((riders ?? []).map((row: any) => [row.id, row]));
+    const pickupPointsById = new Map((pickupPoints ?? []).map((row: any) => [row.id, row]));
+
+    return {
+      ride: {
+        id: ride.id,
+        rideId: ride.ride_id,
+        routeId: ride.route_id,
+        rideDate: ride.ride_date,
+        departureTime: ride.departure_time,
+        timeSlot: ride.time_slot,
+        status: ride.status,
+        route: ride.route,
+        drivers: driversByRide[ride.id] ?? [],
+        trips: trips.map((trip) => ({
+          id: trip.id,
+          tripId: trip.trip_id,
+          driverTripId: trip.driver_trip_id,
+          status: trip.status,
+          capacity: trip.capacity,
+          reservedSeats: trip.reserved_seats,
+          availableSeats: trip.available_seats,
+          driver: trip.driver
+            ? {
+                id: trip.driver.id,
+                firstName: trip.driver.first_name,
+                lastName: trip.driver.last_name,
+                email: trip.driver.email,
+                phone: trip.driver.phone,
+              }
+            : null,
+          vehicle: trip.vehicle
+            ? {
+                id: trip.vehicle.id,
+                registrationNumber: trip.vehicle.registration_number,
+                model: trip.vehicle.model,
+                capacity: trip.vehicle.capacity,
+              }
+            : null,
+        })),
+      },
+      bookings: (bookings ?? []).map((row) => ({
+        id: row.id,
+        status: row.status,
+        seatCount: row.seat_count,
+        tokenCost: row.token_cost,
+        pickupPoint: row.pickup_point_id ? pickupPointsById.get(row.pickup_point_id) ?? null : null,
+        rider: ridersById.get(row.rider_id) ?? null,
+        createdAt: row.created_at,
+      })),
+    };
+  }
+
+  /**
    * Returns dashboard summary metrics and quick lists.
    */
   async getDashboardSummary(from: string, to: string): Promise<Record<string, unknown>> {
@@ -649,7 +964,7 @@ export class AdminOpsRepository {
       supabaseAdmin.from('token_wallets').select('balance'),
       supabaseAdmin
         .from('ride_instance_availability')
-        .select('ride_instance_id, ride_date, departure_time, status, route:routes(name), driver:users(first_name,last_name), vehicle:vehicles(registration_number)')
+        .select('ride_instance_id, ride_date, departure_time, status, route:routes(name), vehicle:vehicles(registration_number)')
         .gte('ride_date', from)
         .lte('ride_date', to)
         .in('status', ['scheduled', 'boarding'])
@@ -677,6 +992,8 @@ export class AdminOpsRepository {
     const totalBookings = bookingsRes.count ?? 0;
     const totalTokensSold = ((purchasesRes.data ?? []) as Array<{ tokens: number }>).reduce((sum, row) => sum + (row.tokens ?? 0), 0);
     const totalWalletBalance = ((walletsRes.data ?? []) as Array<{ balance: number }>).reduce((sum, row) => sum + (row.balance ?? 0), 0);
+    const upcomingRideIds = ((upcomingRes.data ?? []) as Array<{ ride_instance_id: string }>).map((row) => row.ride_instance_id);
+    const upcomingDriverNames = await this.getDriverNamesByRideInstanceIds(upcomingRideIds);
 
     return {
       totalRides,
@@ -685,7 +1002,10 @@ export class AdminOpsRepository {
       totalBookings,
       totalTokensSold,
       totalWalletBalance,
-      upcomingRides: upcomingRes.data ?? [],
+      upcomingRides: ((upcomingRes.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+        ...row,
+        driverNames: upcomingDriverNames[String(row.ride_instance_id)] ?? [],
+      })),
       alerts: {
         cancelledToday: (cancelledTodayRes.data ?? []).length,
         lowSeatRides: lowSeatsRes.data ?? [],

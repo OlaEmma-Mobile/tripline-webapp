@@ -10,6 +10,7 @@ export const adminQueryKeys = {
   rides: (filters: Record<string, unknown>) => ['admin', 'rides', filters] as const,
   rideManifest: (rideInstanceId: string) => ['admin', 'ride-manifest', rideInstanceId] as const,
   rideRealtime: (rideInstanceId: string) => ['admin', 'ride-realtime', rideInstanceId] as const,
+  rideDetails: (rideInstanceId: string) => ['admin', 'ride-details', rideInstanceId] as const,
   bookings: (filters: Record<string, unknown>) => ['admin', 'bookings', filters] as const,
   users: (filters: Record<string, unknown>) => ['admin', 'users', filters] as const,
   userDetail: (userId: string) => ['admin', 'user-detail', userId] as const,

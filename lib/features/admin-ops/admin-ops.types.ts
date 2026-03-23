@@ -78,3 +78,67 @@ export interface AdminSettingsDTO {
   updatedAt: string;
   updatedBy: string | null;
 }
+
+export interface AdminRideInstanceDetails {
+  ride: {
+    id: string;
+    rideId: string;
+    routeId: string;
+    rideDate: string;
+    departureTime: string;
+    timeSlot: string;
+    status: string;
+    route: {
+      id: string;
+      name: string;
+      from_name: string;
+      to_name: string;
+    } | null;
+    drivers: Array<{
+      id: string;
+      driverTripId: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone: string | null;
+      assignedVehicle: {
+        vehicleId: string;
+        registrationNumber: string;
+        model: string | null;
+        capacity: number;
+        assignedAt: string;
+      } | null;
+    }>;
+    trips: Array<{
+      id: string;
+      tripId: string;
+      driverTripId: string;
+      status: string;
+      capacity: number;
+      reservedSeats: number;
+      availableSeats: number;
+      driver: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string | null;
+      } | null;
+      vehicle: {
+        id: string;
+        registrationNumber: string;
+        model: string | null;
+        capacity: number;
+      } | null;
+    }>;
+  };
+  bookings: Array<{
+    id: string;
+    status: string;
+    seatCount: number;
+    tokenCost: number;
+    pickupPoint: { id: string; name: string } | null;
+    rider: { id: string; first_name: string; last_name: string; email: string; phone: string | null } | null;
+    createdAt: string;
+  }>;
+}

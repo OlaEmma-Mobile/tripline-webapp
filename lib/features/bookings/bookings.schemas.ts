@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const lockSeatSchema = z.object({
-  rideInstanceId: z.string().uuid('Ride instance id must be a valid UUID'),
+  tripId: z.string().uuid('Trip id must be a valid UUID'),
   seatCount: z
     .number()
     .int('Seat count must be an integer')
@@ -13,7 +13,7 @@ export const lockSeatSchema = z.object({
  * Payload validation for direct booked booking with token deduction.
  */
 export const createBookingSchema = z.object({
-  rideInstanceId: z.string().uuid('Ride instance id must be a valid UUID'),
+  tripId: z.string().uuid('Trip id must be a valid UUID'),
   pickupPointId: z.string().uuid('Pickup point id must be a valid UUID'),
   seatCount: z
     .number()
@@ -42,3 +42,19 @@ export const boardBookingSchema = z
     path: ['action'],
     message: 'Either action or status is required',
   });
+
+/**
+ * Payload validation for batch driver boarding updates.
+ */
+export const batchBoardingSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        bookingId: z.string().uuid('Booking id must be a valid UUID'),
+        status: z.enum(['BOARDED', 'NO_SHOW', 'boarded', 'no_show'], {
+          errorMap: () => ({ message: 'Status must be BOARDED or NO_SHOW' }),
+        }),
+      })
+    )
+    .min(1, 'At least one booking update is required'),
+});

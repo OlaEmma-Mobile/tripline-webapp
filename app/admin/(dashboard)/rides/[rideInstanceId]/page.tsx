@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { GoogleMap, MarkerF, useJsApiLoader } from '@react-google-maps/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,10 +23,62 @@ interface ManifestPassenger {
   bookedAt: string;
 }
 
-interface ManifestPayload {
-  rideInstanceId: string;
-  passengers: ManifestPassenger[];
-  totalTokensConsumed: number;
+interface RideDetailsPayload {
+  ride: {
+    id: string;
+    rideId: string;
+    rideDate: string;
+    departureTime: string;
+    timeSlot: string;
+    status: string;
+    route: { id: string; name: string; from_name: string; to_name: string } | null;
+    drivers: Array<{
+      id: string;
+      driverTripId: string;
+      first_name: string;
+      last_name: string;
+      email: string;
+      phone: string | null;
+      assignedVehicle: {
+        vehicleId: string;
+        registrationNumber: string;
+        model: string | null;
+        capacity: number;
+        assignedAt: string;
+      } | null;
+    }>;
+    trips: Array<{
+      id: string;
+      tripId: string;
+      driverTripId: string;
+      status: string;
+      capacity: number;
+      reservedSeats: number;
+      availableSeats: number;
+      driver: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone: string | null;
+      } | null;
+      vehicle: {
+        id: string;
+        registrationNumber: string;
+        model: string | null;
+        capacity: number;
+      } | null;
+    }>;
+  };
+  bookings: Array<{
+    id: string;
+    status: string;
+    seatCount: number;
+    tokenCost: number;
+    pickupPoint: { id: string; name: string } | null;
+    rider: { id: string; first_name: string; last_name: string; email: string; phone: string | null } | null;
+    createdAt: string;
+  }>;
 }
 
 interface RealtimePayload {
@@ -54,17 +107,16 @@ export default function AdminRideMonitorPage() {
     libraries,
   });
 
-  const manifestQuery = useQuery({
-    queryKey: adminQueryKeys.rideManifest(validRideInstanceId),
+  const detailsQuery = useQuery({
+    queryKey: adminQueryKeys.rideDetails(validRideInstanceId),
     enabled: Boolean(validRideInstanceId),
-    refetchInterval: 5000,
-    queryFn: async ({ signal }): Promise<ManifestPayload> => {
-      const response = await apiRequest<ManifestPayload>(
-        `/api/admin/ride-instances/${validRideInstanceId}/manifest`,
+    queryFn: async ({ signal }): Promise<RideDetailsPayload> => {
+      const response = await apiRequest<RideDetailsPayload>(
+        `/api/admin/ride-instances/${validRideInstanceId}/details`,
         { signal }
       );
       if (response.hasError || !response.data) {
-        throw new Error(response.message || 'Unable to load manifest');
+        throw new Error(response.message || 'Unable to load ride details');
       }
       return response.data;
     },
@@ -100,7 +152,7 @@ export default function AdminRideMonitorPage() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.rideManifest(validRideInstanceId) }),
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.rideDetails(validRideInstanceId) }),
         queryClient.invalidateQueries({ queryKey: adminQueryKeys.rideRealtime(validRideInstanceId) }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'rides'] }),
       ]);
@@ -113,9 +165,21 @@ export default function AdminRideMonitorPage() {
     return { lat: location.lat, lng: location.lng };
   }, [realtimeQuery.data]);
 
-  const loading = manifestQuery.isLoading || realtimeQuery.isLoading;
-  const manifest = manifestQuery.data;
+  const loading = detailsQuery.isLoading || realtimeQuery.isLoading;
+  const details = detailsQuery.data;
   const realtime = realtimeQuery.data;
+  const passengers: ManifestPassenger[] =
+    details?.bookings?.map((booking) => ({
+      bookingId: booking.id,
+      riderName: `${booking.rider?.first_name ?? ''} ${booking.rider?.last_name ?? ''}`.trim(),
+      riderPhone: booking.rider?.phone ?? null,
+      riderEmail: booking.rider?.email ?? '',
+      pickupPointName: booking.pickupPoint?.name ?? null,
+      bookingStatus: booking.status,
+      tokenCost: booking.tokenCost,
+      bookedAt: booking.createdAt,
+    })) ?? [];
+  const totalTokensConsumed = passengers.reduce((sum, row) => sum + (row.tokenCost ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -123,9 +187,12 @@ export default function AdminRideMonitorPage() {
         <div>
           <h2 className="text-2xl font-bold font-mono text-foreground">Ride Monitor</h2>
           <p className="text-sm text-muted-foreground">Ride ID: {rideInstanceId}</p>
-          {!validation.isValid ? <p className="text-sm text-destructive mt-1">{validation.formMessage}</p> : null}
+          {!validation.isValid ? <p className="mt-1 text-sm text-destructive">{validation.formMessage}</p> : null}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/admin/rides/${validRideInstanceId}/details`}>View details</Link>
+          </Button>
           <Button variant="destructive" onClick={() => void cancelMutation.mutateAsync()} disabled={cancelMutation.isPending}>
             {cancelMutation.isPending ? 'Cancelling...' : 'Cancel ride'}
           </Button>
@@ -151,15 +218,15 @@ export default function AdminRideMonitorPage() {
         {!loading ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-background p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{realtime?.status ?? 'unknown'}</p>
             </div>
             <div className="rounded-xl border border-border bg-background p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Driver Online</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Driver Online</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{realtime?.driverOnline ? 'Yes' : 'No'}</p>
             </div>
             <div className="rounded-xl border border-border bg-background p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Coordinates</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Coordinates</p>
               <p className="mt-2 text-lg font-semibold text-foreground">
                 {marker ? `${marker.lat.toFixed(5)}, ${marker.lng.toFixed(5)}` : 'No location'}
               </p>
@@ -173,11 +240,7 @@ export default function AdminRideMonitorPage() {
               mapContainerStyle={{ width: '100%', height: '100%' }}
               center={marker}
               zoom={14}
-              options={{
-                mapTypeControl: false,
-                streetViewControl: false,
-                fullscreenControl: false,
-              }}
+              options={{ mapTypeControl: false, streetViewControl: false, fullscreenControl: false }}
             >
               <MarkerF position={marker} title="Driver" />
             </GoogleMap>
@@ -190,8 +253,51 @@ export default function AdminRideMonitorPage() {
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6">
-        <h3 className="text-lg font-semibold text-foreground">Manifest</h3>
-        <p className="mt-1 text-sm text-muted-foreground">Total tokens consumed: {manifest?.totalTokensConsumed ?? 0}</p>
+        <h3 className="text-lg font-semibold text-foreground">Assigned Drivers and Trips</h3>
+        {loading ? (
+          <div className="mt-3 grid gap-3 lg:grid-cols-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ) : null}
+        {detailsQuery.isError ? (
+          <p className="mt-3 text-sm text-destructive">{(detailsQuery.error as Error).message}</p>
+        ) : null}
+
+        {!loading && details ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {details.ride.trips.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No trips yet. Assign drivers from the ride details screen to create trips.</p>
+            ) : (
+              details.ride.trips.map((trip) => (
+                <div key={trip.id} className="rounded-xl border border-border bg-background p-4">
+                  <p className="font-semibold text-foreground">
+                    {trip.tripId} · {trip.driverTripId}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {trip.driver
+                      ? `${trip.driver.firstName} ${trip.driver.lastName}`.trim()
+                      : 'Driver unavailable'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {trip.vehicle
+                      ? `${trip.vehicle.registrationNumber}${trip.vehicle.model ? ` · ${trip.vehicle.model}` : ''} · ${trip.vehicle.capacity} seats`
+                      : 'Vehicle unavailable'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {trip.reservedSeats} reserved · {trip.availableSeats} available · {trip.status}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-6">
+        <h3 className="text-lg font-semibold text-foreground">Passengers</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Total tokens consumed: {totalTokensConsumed}</p>
 
         {loading ? (
           <div className="mt-4 space-y-3">
@@ -200,12 +306,12 @@ export default function AdminRideMonitorPage() {
             ))}
           </div>
         ) : null}
-        {manifestQuery.isError ? <p className="mt-4 text-sm text-destructive">{(manifestQuery.error as Error).message}</p> : null}
-        {!loading && (manifest?.passengers?.length ?? 0) === 0 ? (
+        {detailsQuery.isError ? <p className="mt-4 text-sm text-destructive">{(detailsQuery.error as Error).message}</p> : null}
+        {!loading && passengers.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">No passengers yet.</p>
         ) : null}
 
-        {!loading && (manifest?.passengers?.length ?? 0) > 0 ? (
+        {!loading && passengers.length > 0 ? (
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead>
@@ -218,7 +324,7 @@ export default function AdminRideMonitorPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {manifest?.passengers?.map((row) => (
+                {passengers.map((row) => (
                   <tr key={row.bookingId}>
                     <td className="px-3 py-3">
                       <p className="font-semibold text-foreground">{row.riderName}</p>

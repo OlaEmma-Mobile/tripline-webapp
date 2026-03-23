@@ -20,11 +20,26 @@ export interface DriverRouteAssignmentRecord {
   created_at: string;
 }
 
+export interface RideInstanceDriverAssignmentRecord {
+  id: string;
+  ride_instance_id: string;
+  driver_id: string;
+  driver_trip_id: string;
+  status: AssignmentStatus;
+  assigned_at: string;
+  ended_at: string | null;
+  created_at: string;
+}
+
 export interface AssignmentDTO {
   id: string;
   driverId: string;
   vehicleId?: string;
   routeId?: string;
+  rideInstanceId?: string;
+  driverTripId?: string;
+  tripId?: string;
+  tripCode?: string;
   status: AssignmentStatus;
   assignedAt: string;
   endedAt: string | null;
@@ -39,4 +54,9 @@ export interface AssignDriverVehicleInput {
 export interface AssignDriverRouteInput {
   driverId: string;
   routeId: string;
+}
+
+export interface AssignRideInstanceDriversInput {
+  rideInstanceId: string;
+  driverIds: string[];
 }

@@ -15,7 +15,7 @@ const manifestQuerySchema = z.object({
 
 /**
  * GET /api/drivers/me/manifest?date=YYYY-MM-DD
- * Returns authenticated driver's manifest for a date.
+ * Returns authenticated driver's manifest summary for a date.
  * Access: driver only.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {

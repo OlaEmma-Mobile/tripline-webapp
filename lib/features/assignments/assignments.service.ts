@@ -1,10 +1,15 @@
 import { AppError } from '@/lib/utils/errors';
 import { assignmentsRepository, AssignmentsRepository } from './assignments.repository';
+import { realtimeService } from '@/lib/features/realtime/realtime.service';
+import { logStep } from '@/lib/utils/logger';
+import { tripsRepository } from '@/lib/features/trips/trips.repository';
 import type {
   AssignmentDTO,
   AssignDriverRouteInput,
+  AssignRideInstanceDriversInput,
   AssignDriverVehicleInput,
   DriverRouteAssignmentRecord,
+  RideInstanceDriverAssignmentRecord,
   DriverVehicleAssignmentRecord,
 } from './assignments.types';
 
@@ -31,6 +36,22 @@ function mapDriverRoute(record: DriverRouteAssignmentRecord): AssignmentDTO {
     id: record.id,
     driverId: record.driver_id,
     routeId: record.route_id,
+    status: record.status,
+    assignedAt: record.assigned_at,
+    endedAt: record.ended_at,
+    createdAt: record.created_at,
+  };
+}
+
+/**
+ * mapRideDriver Pure helper that transforms data between transport, domain, and persistence shapes.
+ */
+function mapRideDriver(record: RideInstanceDriverAssignmentRecord): AssignmentDTO {
+  return {
+    id: record.id,
+    driverId: record.driver_id,
+    rideInstanceId: record.ride_instance_id,
+    driverTripId: record.driver_trip_id,
     status: record.status,
     assignedAt: record.assigned_at,
     endedAt: record.ended_at,
@@ -120,6 +141,121 @@ export class AssignmentsService {
     }
     const ended = await this.repo.endDriverRouteAssignmentById(id);
     return mapDriverRoute(ended);
+  }
+
+  /**
+   * Assign one or more drivers to a ride instance.
+   */
+  async assignRideDrivers(input: AssignRideInstanceDriversInput): Promise<AssignmentDTO[]> {
+    const ride = await this.repo.getRideInstance(input.rideInstanceId);
+    if (!ride) {
+      throw new AppError('Ride instance not found', 404);
+    }
+    if (ride.status === 'cancelled' || ride.status === 'completed') {
+      throw new AppError('Ride instance is closed for driver assignment', 409);
+    }
+
+    const results: AssignmentDTO[] = [];
+    for (const driverId of input.driverIds) {
+      const driver = await this.repo.getDriver(driverId);
+      if (!driver || driver.role !== 'driver') {
+        throw new AppError('Driver not found', 404);
+      }
+      if (driver.status !== 'active') {
+        throw new AppError('Driver must be active for assignment', 400);
+      }
+      const activeVehicleAssignment = await this.repo.getActiveDriverVehicleAssignmentByDriver(driverId);
+      if (!activeVehicleAssignment) {
+        throw new AppError('Driver must have an active vehicle assignment', 400);
+      }
+
+      const existing = await this.repo.getActiveRideDriverAssignment(input.rideInstanceId, driverId);
+      if (existing) {
+        results.push(mapRideDriver(existing));
+        continue;
+      }
+
+      const conflict = await this.repo.getDriverRideAssignmentConflict(
+        driverId,
+        ride.ride_date,
+        ride.time_slot
+      );
+      if (conflict) {
+        throw new AppError('Driver is already assigned to another ride for this date and slot', 409);
+      }
+
+      const created = await this.repo.createRideDriverAssignment(input.rideInstanceId, driverId);
+      const trip = await tripsRepository.create({
+        rideInstanceId: input.rideInstanceId,
+        assignmentId: created.id,
+        driverId,
+        vehicleId: activeVehicleAssignment.vehicle_id,
+        driverTripId: created.driver_trip_id,
+        status: ride.status,
+      });
+      await this.repo.syncRideVehicleFromAssignments(input.rideInstanceId);
+      try {
+        await realtimeService.notifyUserEvent({
+          userId: driverId,
+          type: 'ride_assignment',
+          title: 'New ride assignment',
+          message: `You have been assigned to ride ${ride.ride_id} as trip ${created.driver_trip_id} on ${ride.ride_date} (${ride.time_slot}).`,
+          reference: input.rideInstanceId,
+          reason: 'DRIVER_ASSIGNED_RIDE',
+          metadata: {
+            rideInstanceId: input.rideInstanceId,
+            rideId: ride.ride_id,
+            driverTripId: created.driver_trip_id,
+            rideDate: ride.ride_date,
+            timeSlot: ride.time_slot,
+          },
+        });
+      } catch {
+        logStep('ride driver assignment notification failed', {
+          rideInstanceId: input.rideInstanceId,
+          driverId,
+        });
+      }
+      results.push({
+        ...mapRideDriver(created),
+        vehicleId: activeVehicleAssignment.vehicle_id,
+        tripId: trip.id,
+        tripCode: trip.trip_id,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * List active drivers assigned to a ride instance.
+   */
+  async listRideDrivers(rideInstanceId: string): Promise<AssignmentDTO[]> {
+    const ride = await this.repo.getRideInstance(rideInstanceId);
+    if (!ride) {
+      throw new AppError('Ride instance not found', 404);
+    }
+    const assignments = await this.repo.listActiveRideDriverAssignments(rideInstanceId);
+    return assignments.map(mapRideDriver);
+  }
+
+  /**
+   * End a driver's active assignment on a ride instance.
+   */
+  async unassignRideDriver(rideInstanceId: string, driverId: string): Promise<AssignmentDTO> {
+    const existing = await this.repo.getActiveRideDriverAssignment(rideInstanceId, driverId);
+    if (!existing) {
+      throw new AppError('Ride driver assignment not found', 404);
+    }
+    const ended = await this.repo.endRideDriverAssignment(rideInstanceId, driverId);
+    await tripsRepository.cancelByAssignmentId(ended.id);
+    await this.repo.syncRideVehicleFromAssignments(rideInstanceId);
+    const trip = await tripsRepository.getByAssignmentId(ended.id);
+    return {
+      ...mapRideDriver(ended),
+      tripId: trip?.id,
+      tripCode: trip?.trip_id,
+    };
   }
 }
 

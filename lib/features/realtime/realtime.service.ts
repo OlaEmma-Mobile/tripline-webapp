@@ -40,6 +40,15 @@ interface RealtimeDependencies {
   getMessaging: typeof getFirebaseMessaging;
 }
 
+function toPushData(metadata?: Record<string, unknown>): Record<string, string> {
+  if (!metadata) return {};
+  return Object.entries(metadata).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (value === null || value === undefined) return acc;
+    acc[key] = typeof value === 'string' ? value : String(value);
+    return acc;
+  }, {});
+}
+
 /**
  * Realtime + push integration service.
  */
@@ -230,9 +239,13 @@ export class RealtimeService {
     }
 
     try {
-      const push = await this.sendPushNotification(input.userId, input.title, input.message, {
+      const pushData = {
         reference: input.reference,
         reason: input.reason,
+        ...toPushData(input.metadata),
+      };
+      const push = await this.sendPushNotification(input.userId, input.title, input.message, {
+        ...pushData,
       });
       if (!push.sent) {
         await notificationsService.markDeliveryStatus({

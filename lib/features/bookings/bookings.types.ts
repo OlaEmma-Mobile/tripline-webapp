@@ -14,6 +14,8 @@ export type BookingStatus =
 export interface BookingRecord {
   /** Primary key. */
   id: string;
+  /** Linked trip id. */
+  trip_id: string | null;
   /** Linked ride instance id. */
   ride_instance_id: string;
   /** Linked rider user id. */
@@ -50,6 +52,8 @@ export interface BookingRecord {
 export interface BookingDTO {
   /** Primary key. */
   id: string;
+  /** Trip id. */
+  tripId: string | null;
   /** Ride instance id. */
   rideInstanceId: string;
   /** Rider user id. */
@@ -86,8 +90,8 @@ export interface BookingDTO {
  * Input for seat lock request.
  */
 export interface LockSeatInput {
-  /** Target ride instance id. */
-  rideInstanceId: string;
+  /** Target trip id. */
+  tripId: string;
   /** Number of seats to reserve. */
   seatCount: number;
   /** Optional lock lifetime in minutes; defaults at RPC level. */
@@ -98,8 +102,8 @@ export interface LockSeatInput {
  * Input for direct booking with atomic token deduction.
  */
 export interface CreateBookingInput {
-  /** Target ride instance id. */
-  rideInstanceId: string;
+  /** Target trip id. */
+  tripId: string;
   /** Pickup point id on route. */
   pickupPointId: string;
   /** Number of seats to book. */
@@ -112,6 +116,8 @@ export interface CreateBookingInput {
 export interface CreateBookingResult {
   /** Created booking id. */
   bookingId: string;
+  /** Trip id. */
+  tripId: string;
   /** Ride instance id. */
   rideInstanceId: string;
   /** Rider id. */
@@ -142,6 +148,8 @@ export interface CreateBookingResult {
 export interface LockSeatResult {
   /** Created/updated booking id. */
   bookingId: string;
+  /** Target trip id. */
+  tripId: string;
   /** Target ride instance id. */
   rideInstanceId: string;
   /** Rider user id. */
@@ -164,6 +172,12 @@ export interface LockSeatResult {
  * Booking row plus minimal ride instance relation used for "my bookings".
  */
 export interface BookingWithRideRecord extends BookingRecord {
+  trip: {
+    id: string;
+    trip_id: string;
+    driver_trip_id: string;
+    vehicle_id: string;
+  } | null;
   /** Embedded ride instance projection from relational select. */
   ride_instance: {
     /** Related route id. */
@@ -189,12 +203,13 @@ export interface BookingWithRideRecord extends BookingRecord {
  * Booking row with minimal ride assignment context used for driver boarding checks.
  */
 export interface DriverBookingRecord extends BookingRecord {
+  trip: {
+    id: string;
+  } | null;
   /** Embedded ride instance projection for driver ownership validation. */
   ride_instance: {
     /** Ride instance id. */
     id: string;
-    /** Assigned driver user id. */
-    driver_id: string | null;
   } | null;
 }
 

@@ -6,6 +6,7 @@ import type { BookingRecord } from './bookings.types';
 
 const baseBooking: BookingRecord = {
   id: 'booking-1',
+  trip_id: 'trip-1',
   ride_instance_id: 'ride-1',
   rider_id: 'rider-1',
   pickup_point_id: null,

@@ -1,11 +1,12 @@
 import { AppError } from '@/lib/utils/errors';
 import { hashPassword } from '@/lib/security/password';
 import { walletRepository } from '@/lib/features/wallet/wallet.repository';
-import { isManifestPassengerStatus } from './driver-booking-auth';
 import { driversRepository, DriversRepository } from './drivers.repository';
 import type {
   CreateDriverInput,
   DriverDTO,
+  DriverManifestCountsRow,
+  DriverManifestDetailDTO,
   DriverFilters,
   DriverManifestDTO,
   DriverManifestRideRow,
@@ -37,21 +38,40 @@ function mapDriver(record: DriverRecord, kycStatus: DriverKycStatus = null): Dri
 /**
  * mapManifestRide Pure helper that transforms data between transport, domain, and persistence shapes.
  */
-function mapManifestRide(record: DriverManifestRideRow): DriverManifestDTO['rides'][number] {
+function mapManifestTrip(record: DriverManifestRideRow): DriverManifestDTO['trips'][number] {
   return {
-    ride_instance_id: record.id,
-    route_name: record.route?.name ?? 'Unknown route',
-    departure_time: record.departure_time,
-    vehicle_plate: record.vehicle?.registration_number ?? 'Unknown vehicle',
-    passengers: (record.bookings ?? [])
-      .filter((booking) => isManifestPassengerStatus(booking.status))
-      .map((booking) => ({
-        booking_id: booking.id,
-        user_id: booking.rider_id,
-        user_name: `${booking.rider?.first_name ?? ''} ${booking.rider?.last_name ?? ''}`.trim(),
-        pickup_point_id: null,
-        booking_status: booking.status,
-      })),
+    id: record.id,
+    tripId: record.trip_id,
+    driverTripId: record.driver_trip_id,
+    rideInstanceId: record.ride_instance_id,
+    rideId: record.ride_id,
+    rideDate: record.ride_date,
+    departureTime: record.departure_time,
+    timeSlot: record.time_slot,
+    status: record.status,
+    vehiclePlate: record.vehicle?.registration_number ?? 'Unknown vehicle',
+    capacity: record.capacity,
+    route: record.route
+      ? {
+          name: record.route.name,
+          fromName: record.route.from_name,
+          toName: record.route.to_name,
+          fromLat: record.route.from_latitude,
+          fromLng: record.route.from_longitude,
+          toLat: record.route.to_latitude,
+          toLng: record.route.to_longitude,
+        }
+      : {
+          name: 'Unknown route',
+          fromName: '',
+          toName: '',
+          fromLat: 0,
+          fromLng: 0,
+          toLat: 0,
+          toLng: 0,
+        },
+    totalPassengers: 0,
+    totalBoarded: 0,
   };
 }
 
@@ -133,17 +153,47 @@ export class DriversService {
   }
 
   /**
-   * Get a driver's daily manifest across scheduled/boarding ride instances.
+   * Get a driver's daily manifest across scheduled/boarding trips.
    * @param driverId Driver user id.
    * @param date Ride date (YYYY-MM-DD).
-   * @returns Driver manifest grouped by ride instance.
-   */
+   * @returns Driver manifest grouped by trip.
+  */
   async getManifest(driverId: string, date: string): Promise<DriverManifestDTO> {
     const rows = await this.repo.getManifestRows(driverId, date);
+    const tripIds = rows.map((row) => row.id);
+    const counts = await this.repo.getManifestCounts(tripIds);
+    const countsMap = new Map<string, DriverManifestCountsRow>();
+    for (const row of counts) countsMap.set(row.trip_id, row);
+
     return {
       date,
-      rides: rows.map(mapManifestRide),
+      trips: rows.map((row) => {
+        const mapped = mapManifestTrip(row);
+        const rideCounts = countsMap.get(row.id);
+        return {
+          ...mapped,
+          totalPassengers: rideCounts?.total_passengers ?? 0,
+          totalBoarded: rideCounts?.total_boarded ?? 0,
+        };
+      }),
     };
+  }
+
+  /**
+   * Get a driver's detailed manifest for a single ride instance.
+   * @param driverId Driver user id.
+   * @param rideInstanceId Ride instance id.
+   * @returns Full manifest details with passenger list.
+   */
+  async getManifestDetails(
+    driverId: string,
+    rideInstanceId: string
+  ): Promise<DriverManifestDetailDTO> {
+    const details = await this.repo.getManifestDetails(driverId, rideInstanceId);
+    if (!details) {
+      throw new AppError('Ride instance not found', 404);
+    }
+    return details;
   }
 }
 

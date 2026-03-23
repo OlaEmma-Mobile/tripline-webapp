@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/lib/db/supabase';
 import { AppError } from '@/lib/utils/errors';
 import type {
   DriverRouteAssignmentRecord,
+  RideInstanceDriverAssignmentRecord,
   DriverVehicleAssignmentRecord,
 } from './assignments.types';
 
@@ -19,6 +20,15 @@ interface VehicleLookup {
 interface RouteLookup {
   id: string;
   status: 'active' | 'inactive';
+}
+
+interface RideInstanceLookup {
+  id: string;
+  ride_id: string;
+  vehicle_id?: string | null;
+  ride_date: string;
+  time_slot: 'morning' | 'afternoon' | 'evening';
+  status: 'scheduled' | 'boarding' | 'departed' | 'completed' | 'cancelled';
 }
 
 /**
@@ -67,6 +77,20 @@ export class AssignmentsRepository {
     return data ?? null;
   }
 
+  /** Get ride instance for assignment validation. */
+  async getRideInstance(rideInstanceId: string): Promise<RideInstanceLookup | null> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instances')
+.select('id, ride_id, vehicle_id, ride_date, time_slot, status')
+      .eq('id', rideInstanceId)
+      .maybeSingle<RideInstanceLookup>();
+
+    if (error) {
+      throw new AppError('Unable to fetch ride instance', 500);
+    }
+    return data ?? null;
+  }
+
   /** End current active assignment for a driver->vehicle relation (by driver). */
   async endActiveDriverVehicleByDriver(driverId: string): Promise<void> {
     const { error } = await supabaseAdmin
@@ -106,6 +130,25 @@ export class AssignmentsRepository {
 
     if (error) {
       throw new AppError('Unable to fetch active vehicle assignment', 500);
+    }
+
+    return data ?? null;
+  }
+
+  /** Find active driver->vehicle assignment by driver id. */
+  async getActiveDriverVehicleAssignmentByDriver(
+    driverId: string
+  ): Promise<DriverVehicleAssignmentRecord | null> {
+    const { data, error } = await supabaseAdmin
+      .from('driver_vehicle_assignments')
+      .select('*')
+      .eq('driver_id', driverId)
+      .eq('status', 'active')
+      .order('assigned_at', { ascending: false })
+      .maybeSingle<DriverVehicleAssignmentRecord>();
+
+    if (error) {
+      throw new AppError('Unable to fetch active driver vehicle assignment', 500);
     }
 
     return data ?? null;
@@ -208,6 +251,164 @@ export class AssignmentsRepository {
       throw new AppError('Unable to end driver route assignment', 500);
     }
     return data;
+  }
+
+  /** Find active ride assignments for a ride instance. */
+  async listActiveRideDriverAssignments(
+    rideInstanceId: string
+  ): Promise<RideInstanceDriverAssignmentRecord[]> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+      .select('*')
+      .eq('ride_instance_id', rideInstanceId)
+      .eq('status', 'active')
+      .order('assigned_at', { ascending: true })
+      .returns<RideInstanceDriverAssignmentRecord[]>();
+
+    if (error) {
+      throw new AppError('Unable to fetch ride driver assignments', 500);
+    }
+    return data ?? [];
+  }
+
+  /** Find active ride assignment by ride and driver. */
+  async getActiveRideDriverAssignment(
+    rideInstanceId: string,
+    driverId: string
+  ): Promise<RideInstanceDriverAssignmentRecord | null> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+      .select('*')
+      .eq('ride_instance_id', rideInstanceId)
+      .eq('driver_id', driverId)
+      .eq('status', 'active')
+      .maybeSingle<RideInstanceDriverAssignmentRecord>();
+
+    if (error) {
+      throw new AppError('Unable to fetch ride driver assignment', 500);
+    }
+    return data ?? null;
+  }
+
+  async getRideDriverAssignmentById(id: string): Promise<RideInstanceDriverAssignmentRecord | null> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle<RideInstanceDriverAssignmentRecord>();
+
+    if (error) {
+      throw new AppError('Unable to fetch ride driver assignment', 500);
+    }
+    return data ?? null;
+  }
+
+  /** Find conflicting active ride assignment for driver on same date + slot. */
+  async getDriverRideAssignmentConflict(
+    driverId: string,
+    rideDate: string,
+    timeSlot: string
+  ): Promise<RideInstanceDriverAssignmentRecord | null> {
+    const { data: assignments, error: assignmentError } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+.select('id, ride_instance_id, driver_id, driver_trip_id, status, assigned_at, ended_at, created_at')
+      .eq('driver_id', driverId)
+      .eq('status', 'active')
+      .returns<RideInstanceDriverAssignmentRecord[]>();
+
+    if (assignmentError) {
+      throw new AppError('Unable to validate ride driver assignment', 500);
+    }
+
+    const rideIds = (assignments ?? []).map((assignment) => assignment.ride_instance_id);
+    if (rideIds.length === 0) return null;
+
+    const { data: rides, error: ridesError } = await supabaseAdmin
+      .from('ride_instances')
+      .select('id')
+      .in('id', rideIds)
+      .eq('ride_date', rideDate)
+      .eq('time_slot', timeSlot)
+      .limit(1)
+      .returns<Array<{ id: string }>>();
+
+    if (ridesError) {
+      throw new AppError('Unable to validate ride driver assignment', 500);
+    }
+
+    const conflictingRideId = rides?.[0]?.id;
+    if (!conflictingRideId) return null;
+
+    return (assignments ?? []).find((assignment) => assignment.ride_instance_id === conflictingRideId) ?? null;
+  }
+
+  /** Create new active ride-driver assignment. */
+  async createRideDriverAssignment(
+    rideInstanceId: string,
+    driverId: string
+  ): Promise<RideInstanceDriverAssignmentRecord> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+      .insert({ ride_instance_id: rideInstanceId, driver_id: driverId, status: 'active' })
+      .select('*')
+      .single<RideInstanceDriverAssignmentRecord>();
+
+    if (error?.code === '23505') {
+      throw new AppError('Driver is already assigned to this ride', 409);
+    }
+    if (error || !data) {
+      throw new AppError('Unable to assign driver to ride', 500);
+    }
+    return data;
+  }
+
+  /** End active ride-driver assignment. */
+  async endRideDriverAssignment(
+    rideInstanceId: string,
+    driverId: string
+  ): Promise<RideInstanceDriverAssignmentRecord> {
+    const { data, error } = await supabaseAdmin
+      .from('ride_instance_driver_assignments')
+      .update({ status: 'ended', ended_at: new Date().toISOString() })
+      .eq('ride_instance_id', rideInstanceId)
+      .eq('driver_id', driverId)
+      .eq('status', 'active')
+      .select('*')
+      .single<RideInstanceDriverAssignmentRecord>();
+
+    if (error || !data) {
+      throw new AppError('Unable to end ride driver assignment', 500);
+    }
+    return data;
+  }
+
+  /** Check whether driver is actively assigned to a ride instance. */
+  async isDriverAssignedToRide(rideInstanceId: string, driverId: string): Promise<boolean> {
+    const assignment = await this.getActiveRideDriverAssignment(rideInstanceId, driverId);
+    return Boolean(assignment);
+  }
+
+  /** Syncs ride_instances.vehicle_id from the first active assigned driver's vehicle, or null when none exist. */
+  async syncRideVehicleFromAssignments(rideInstanceId: string): Promise<void> {
+    const assignments = await this.listActiveRideDriverAssignments(rideInstanceId);
+    let vehicleId: string | null = null;
+
+    for (const assignment of assignments) {
+      const vehicleAssignment = await this.getActiveDriverVehicleAssignmentByDriver(assignment.driver_id);
+      if (vehicleAssignment?.vehicle_id) {
+        vehicleId = vehicleAssignment.vehicle_id;
+        break;
+      }
+    }
+
+    const { error } = await supabaseAdmin
+      .from('ride_instances')
+      .update({ vehicle_id: vehicleId })
+      .eq('id', rideInstanceId);
+
+    if (error) {
+      throw new AppError('Unable to sync ride vehicle', 500);
+    }
   }
 }
 

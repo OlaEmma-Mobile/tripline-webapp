@@ -40,6 +40,9 @@ export interface DriverFilters {
   limit: number;
   status?: DriverStatus;
   q?: string;
+  rideDate?: string;
+  timeSlot?: 'morning' | 'afternoon' | 'evening';
+  rideInstanceId?: string;
 }
 
 export interface CreateDriverInput {
@@ -64,30 +67,49 @@ export interface DriverKycRecordLite {
 }
 
 export interface DriverManifestPassengerDTO {
-  booking_id: string;
-  user_id: string;
-  user_name: string;
-  pickup_point_id: string | null;
-  booking_status: string;
+  bookingId: string;
+  userId: string;
+  userName: string;
+  pickupPointId: string | null;
+  pickupPointName?: string | null;
+  bookingStatus: string;
 }
 
-export interface DriverManifestRideDTO {
-  ride_instance_id: string;
-  route_name: string;
-  departure_time: string;
-  vehicle_plate: string;
-  passengers: DriverManifestPassengerDTO[];
+export interface DriverManifestTripDTO {
+  id: string;
+  tripId: string;
+  driverTripId: string;
+  rideInstanceId: string;
+  rideId: string;
+  rideDate: string;
+  departureTime: string;
+  timeSlot: string;
+  status: string;
+  vehiclePlate: string;
+  capacity: number;
+  route: {
+    name: string;
+    fromName: string;
+    toName: string;
+    fromLat: number;
+    fromLng: number;
+    toLat: number;
+    toLng: number;
+  };
+  totalPassengers: number;
+  totalBoarded: number;
 }
 
 export interface DriverManifestDTO {
   date: string;
-  rides: DriverManifestRideDTO[];
+  trips: DriverManifestTripDTO[];
 }
 
 export interface DriverManifestBookingRow {
   id: string;
   rider_id: string;
   status: string;
+  pickup_point: { id: string; name: string } | null;
   rider: {
     first_name: string;
     last_name: string;
@@ -96,14 +118,59 @@ export interface DriverManifestBookingRow {
 
 export interface DriverManifestRideRow {
   id: string;
+  trip_id: string;
+  ride_instance_id: string;
+  driver_trip_id: string;
+  ride_id: string;
+  ride_date: string;
   departure_time: string;
+  time_slot: string;
+  status: string;
+  capacity: number;
   route: {
     name: string;
+    from_name: string;
+    to_name: string;
+    from_latitude: number;
+    from_longitude: number;
+    to_latitude: number;
+    to_longitude: number;
   } | null;
   vehicle: {
     registration_number: string;
   } | null;
-  bookings: DriverManifestBookingRow[] | null;
+}
+
+export interface DriverManifestCountsRow {
+  trip_id: string;
+  total_passengers: number;
+  total_boarded: number;
+}
+
+export interface DriverManifestDetailDTO {
+  trip: {
+    id: string;
+    tripId: string;
+    driverTripId: string;
+    rideInstanceId: string;
+    rideId: string;
+    rideDate: string;
+    departureTime: string;
+    timeSlot: string;
+    status: string;
+    vehiclePlate: string;
+    capacity: number;
+    route: {
+      name: string;
+      fromName: string;
+      toName: string;
+      fromLat: number;
+      fromLng: number;
+      toLat: number;
+      toLng: number;
+    };
+  };
+  passengers: DriverManifestPassengerDTO[];
 }
 
 export interface DriverVehicleAssignmentProjection {

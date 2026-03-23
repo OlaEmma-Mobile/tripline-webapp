@@ -29,6 +29,9 @@ export const driversQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
   status: driverStatusSchema.optional(),
   q: z.string().trim().optional(),
+  rideDate: z.string().date().optional(),
+  timeSlot: z.enum(['morning', 'afternoon', 'evening']).optional(),
+  rideInstanceId: z.string().uuid().optional(),
 });
 
 export const driverLocationUpdateSchema = z.object({
