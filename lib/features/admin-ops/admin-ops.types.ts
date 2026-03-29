@@ -85,7 +85,6 @@ export interface AdminRideInstanceDetails {
     rideId: string;
     routeId: string;
     rideDate: string;
-    departureTime: string;
     timeSlot: string;
     status: string;
     route: {
@@ -112,7 +111,9 @@ export interface AdminRideInstanceDetails {
     trips: Array<{
       id: string;
       tripId: string;
-      driverTripId: string;
+      driverTripId: string | null;
+      departureTime: string;
+      estimatedDurationMinutes: number;
       status: string;
       capacity: number;
       reservedSeats: number;
@@ -135,9 +136,18 @@ export interface AdminRideInstanceDetails {
   bookings: Array<{
     id: string;
     status: string;
+    boardingStatus: string;
+    boardingExpiresAt: string | null;
+    boardingRequestedAt: string | null;
+    boardingRequestedByDriverId: string | null;
+    boardingApprovedAt: string | null;
+    boardingDeclinedAt: string | null;
+    boardingDeclineReason: string | null;
+    boardingVerifiedAt: string | null;
+    boardingVerificationMethod: string | null;
     seatCount: number;
     tokenCost: number;
-    pickupPoint: { id: string; name: string } | null;
+    pickupPoint: { id: string; name: string; latitude: number | null; longitude: number | null } | null;
     rider: { id: string; first_name: string; last_name: string; email: string; phone: string | null } | null;
     createdAt: string;
   }>;

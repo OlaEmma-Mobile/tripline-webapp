@@ -1,4 +1,5 @@
-export type RouteStatus = 'active' | 'inactive';
+export type RouteStatus = 'available' | 'coming_soon';
+export type LegacyRouteStatus = RouteStatus | 'active' | 'inactive';
 
 export interface RouteRecord {
   id: string;
@@ -11,7 +12,7 @@ export interface RouteRecord {
   to_latitude: number;
   to_longitude: number;
   base_token_cost: number;
-  status: RouteStatus;
+  status: LegacyRouteStatus;
   created_at: string;
   updated_at: string;
 }

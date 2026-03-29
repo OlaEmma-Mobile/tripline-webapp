@@ -114,8 +114,8 @@ export class AssignmentsService {
     if (!route) {
       throw new AppError('Route not found', 404);
     }
-    if (route.status !== 'active') {
-      throw new AppError('Route must be active for assignment', 400);
+    if (route.status !== 'available' && route.status !== 'active') {
+      throw new AppError('Route must be available for assignment', 400);
     }
 
     await this.repo.endActiveDriverRouteByDriver(input.driverId);
@@ -151,12 +151,14 @@ export class AssignmentsService {
     if (!ride) {
       throw new AppError('Ride instance not found', 404);
     }
-    if (ride.status === 'cancelled' || ride.status === 'completed') {
+    if (ride.status === 'cancelled') {
       throw new AppError('Ride instance is closed for driver assignment', 409);
     }
 
     const results: AssignmentDTO[] = [];
-    for (const driverId of input.driverIds) {
+    for (const assignmentInput of input.assignments) {
+      const normalizedDepartureTime = this.repo.normalizeTime(assignmentInput.departureTime);
+      const driverId = assignmentInput.driverId;
       const driver = await this.repo.getDriver(driverId);
       if (!driver || driver.role !== 'driver') {
         throw new AppError('Driver not found', 404);
@@ -171,7 +173,15 @@ export class AssignmentsService {
 
       const existing = await this.repo.getActiveRideDriverAssignment(input.rideInstanceId, driverId);
       if (existing) {
-        results.push(mapRideDriver(existing));
+        const existingTrip = await tripsRepository.getByAssignmentId(existing.id);
+        results.push({
+          ...mapRideDriver(existing),
+          vehicleId: activeVehicleAssignment.vehicle_id,
+          tripId: existingTrip?.id,
+          tripCode: existingTrip?.trip_id,
+          departureTime: existingTrip?.departure_time,
+          estimatedDurationMinutes: existingTrip?.estimated_duration_minutes,
+        });
         continue;
       }
 
@@ -185,14 +195,30 @@ export class AssignmentsService {
       }
 
       const created = await this.repo.createRideDriverAssignment(input.rideInstanceId, driverId);
-      const trip = await tripsRepository.create({
-        rideInstanceId: input.rideInstanceId,
-        assignmentId: created.id,
-        driverId,
-        vehicleId: activeVehicleAssignment.vehicle_id,
-        driverTripId: created.driver_trip_id,
-        status: ride.status,
-      });
+      const awaitingTrip = await tripsRepository.findAwaitingDriverTrip(
+        input.rideInstanceId,
+        normalizedDepartureTime
+      );
+      const trip = awaitingTrip
+        ? await tripsRepository.reassignAwaitingDriverTrip({
+            tripId: awaitingTrip.id,
+            assignmentId: created.id,
+            driverId,
+            vehicleId: activeVehicleAssignment.vehicle_id,
+            driverTripId: created.driver_trip_id,
+            departureTime: normalizedDepartureTime,
+            estimatedDurationMinutes: assignmentInput.estimatedDurationMinutes,
+          })
+        : await tripsRepository.create({
+            rideInstanceId: input.rideInstanceId,
+            assignmentId: created.id,
+            driverId,
+            vehicleId: activeVehicleAssignment.vehicle_id,
+            driverTripId: created.driver_trip_id,
+            departureTime: normalizedDepartureTime,
+            estimatedDurationMinutes: assignmentInput.estimatedDurationMinutes,
+            status: 'scheduled',
+          });
       await this.repo.syncRideVehicleFromAssignments(input.rideInstanceId);
       try {
         await realtimeService.notifyUserEvent({
@@ -221,6 +247,8 @@ export class AssignmentsService {
         vehicleId: activeVehicleAssignment.vehicle_id,
         tripId: trip.id,
         tripCode: trip.trip_id,
+        departureTime: trip.departure_time,
+        estimatedDurationMinutes: trip.estimated_duration_minutes,
       });
     }
 
@@ -248,13 +276,14 @@ export class AssignmentsService {
       throw new AppError('Ride driver assignment not found', 404);
     }
     const ended = await this.repo.endRideDriverAssignment(rideInstanceId, driverId);
-    await tripsRepository.cancelByAssignmentId(ended.id);
+    const trip = await tripsRepository.markAwaitingDriverByAssignmentId(ended.id);
     await this.repo.syncRideVehicleFromAssignments(rideInstanceId);
-    const trip = await tripsRepository.getByAssignmentId(ended.id);
     return {
       ...mapRideDriver(ended),
       tripId: trip?.id,
       tripCode: trip?.trip_id,
+      departureTime: trip?.departure_time,
+      estimatedDurationMinutes: trip?.estimated_duration_minutes,
     };
   }
 }

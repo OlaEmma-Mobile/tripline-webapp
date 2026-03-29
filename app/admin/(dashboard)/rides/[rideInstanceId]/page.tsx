@@ -28,7 +28,6 @@ interface RideDetailsPayload {
     id: string;
     rideId: string;
     rideDate: string;
-    departureTime: string;
     timeSlot: string;
     status: string;
     route: { id: string; name: string; from_name: string; to_name: string } | null;
@@ -50,7 +49,9 @@ interface RideDetailsPayload {
     trips: Array<{
       id: string;
       tripId: string;
-      driverTripId: string;
+      driverTripId: string | null;
+      departureTime: string;
+      estimatedDurationMinutes: number;
       status: string;
       capacity: number;
       reservedSeats: number;
@@ -273,7 +274,7 @@ export default function AdminRideMonitorPage() {
               details.ride.trips.map((trip) => (
                 <div key={trip.id} className="rounded-xl border border-border bg-background p-4">
                   <p className="font-semibold text-foreground">
-                    {trip.tripId} · {trip.driverTripId}
+                    {trip.tripId}{trip.driverTripId ? ` · ${trip.driverTripId}` : ''}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {trip.driver

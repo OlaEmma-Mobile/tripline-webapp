@@ -5,8 +5,53 @@ import { AppError } from '@/lib/utils/errors';
 import { errorResponse, jsonResponse } from '@/lib/utils/responses';
 
 /**
- * GET /api/admin/ride-instances/:id/details
- * Returns full ride instance details for admin.
+ * @openapi
+ * /api/admin/ride-instances/{id}/details:
+ *   get:
+ *     tags:
+ *       - Admin Ride Instances
+ *     summary: Fetch full admin ride-template details
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Ride instance UUID
+ *     responses:
+ *       '200':
+ *         description: Ride template details returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasError:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   $ref: '#/components/schemas/AdminRideInstanceDetails'
+ *                 message:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 errors:
+ *                   type: object
+ *       '403':
+ *         description: Only admin roles can access this resource
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *       '404':
+ *         description: Ride instance not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
  */
 export async function GET(
   request: NextRequest,

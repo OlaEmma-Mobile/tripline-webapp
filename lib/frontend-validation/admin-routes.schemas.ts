@@ -12,10 +12,10 @@ export const adminRouteFormClientSchema = z.object({
   toLatitude: latitudeSchema,
   toLongitude: longitudeSchema,
   baseTokenCost: z.number().int().min(0, 'Base token cost must be 0 or greater'),
-  status: z.enum(['active', 'inactive']),
+  status: z.enum(['available', 'coming_soon']),
 });
 
 export const adminRoutesFilterClientSchema = z.object({
   q: z.string().trim().optional(),
-  status: z.enum(['all', 'active', 'inactive']),
+  status: z.enum(['all', 'available', 'coming_soon']),
 });

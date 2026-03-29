@@ -28,7 +28,6 @@ interface RideRow {
   id: string;
   rideId?: string;
   routeName?: string;
-  departureTime: string;
   rideDate: string;
   timeSlot?: string;
   driverNames?: string[];
@@ -38,7 +37,8 @@ interface RideRow {
   trips?: Array<{
     id: string;
     tripId: string;
-    driverTripId: string;
+    driverTripId: string | null;
+    departureTime?: string;
     availableSeats: number;
   }>;
 }
@@ -69,11 +69,10 @@ export default function AdminRidesPage() {
   const [createForm, setCreateForm] = useState({
     routeId: '',
     rideDate: today,
-    departureTime: '06:30',
-    timeSlot: 'morning',
+    timeSlots: ['morning'] as Array<'morning' | 'evening'>,
   });
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
-  const [pendingRideAction, setPendingRideAction] = useState<{ rideId: string; action: 'boarding' | 'cancel' | 'delete' } | null>(null);
+  const [pendingRideAction, setPendingRideAction] = useState<{ rideId: string; action: 'cancel' | 'delete' } | null>(null);
 
   const ridesQuery = useQuery({
     queryKey: adminQueryKeys.rides({ date, status, page, limit }),
@@ -109,7 +108,6 @@ export default function AdminRidesPage() {
           id: item.id ?? item.rideInstanceId ?? item.ride_instance_id,
           rideId: item.rideId ?? item.ride_id,
           routeName: item.routeName ?? item.route_name,
-          departureTime: item.departureTime ?? item.departure_time,
           rideDate: item.rideDate ?? item.ride_date,
           timeSlot: item.timeSlot ?? item.time_slot,
           driverNames: item.driverNames ?? item.driver_names ?? [],
@@ -166,10 +164,10 @@ export default function AdminRidesPage() {
   });
 
   const routesQuery = useQuery({
-    queryKey: adminQueryKeys.routes({ status: 'active' }),
+    queryKey: adminQueryKeys.routes({ status: 'available' }),
     queryFn: async ({ signal }): Promise<SimpleOption[]> => {
       const response = await apiRequest<{ items: SimpleOption[] }>(
-        '/api/admin/routes?page=1&limit=100&status=active',
+        '/api/admin/routes?page=1&limit=100&status=available',
         { signal }
       );
       if (response.hasError || !response.data) {
@@ -200,8 +198,7 @@ export default function AdminRidesPage() {
         body: JSON.stringify({
           routeId: validation.data?.routeId,
           rideDate: validation.data?.rideDate,
-          departureTime: validation.data?.departureTime,
-          timeSlot: validation.data?.timeSlot,
+          timeSlots: validation.data?.timeSlots,
         }),
       });
 
@@ -225,12 +222,6 @@ export default function AdminRidesPage() {
     switch (statusValue) {
       case 'scheduled':
         return 'bg-blue-100 text-blue-700';
-      case 'boarding':
-        return 'bg-amber-100 text-amber-700';
-      case 'departed':
-        return 'bg-violet-100 text-violet-700';
-      case 'completed':
-        return 'bg-green-100 text-green-700';
       case 'cancelled':
         return 'bg-rose-100 text-rose-700';
       default:
@@ -243,7 +234,7 @@ export default function AdminRidesPage() {
       <div className="flex items-end justify-between">
         <div>
           <h2 className="text-2xl font-bold font-mono text-foreground">Ride Instances</h2>
-          <p className="text-sm text-muted-foreground">Operational departures per day.</p>
+          <p className="text-sm text-muted-foreground">Schedule templates grouped by route, date, and slot. You can create morning, evening, or both in one step.</p>
         </div>
         <div className="flex items-end gap-3">
           <label className="text-sm">
@@ -271,9 +262,6 @@ export default function AdminRidesPage() {
             >
               <option value="">All</option>
               <option value="scheduled">scheduled</option>
-              <option value="boarding">boarding</option>
-              <option value="departed">departed</option>
-              <option value="completed">completed</option>
               <option value="cancelled">cancelled</option>
             </select>
             {clientFieldErrors.status ? <p className="mt-1 text-xs text-destructive">{clientFieldErrors.status[0]}</p> : null}
@@ -327,7 +315,6 @@ export default function AdminRidesPage() {
                   <th className="px-3 py-2">Route</th>
                   <th className="px-3 py-2">Ride ID</th>
                   <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Time</th>
                   <th className="px-3 py-2">Time Slot</th>
                   <th className="px-3 py-2">Drivers</th>
                   <th className="px-3 py-2">Trips</th>
@@ -346,7 +333,6 @@ export default function AdminRidesPage() {
                     <td className="px-3 py-3">{ride.routeName ?? '-'}</td>
                     <td className="px-3 py-3">{ride.rideId ?? '-'}</td>
                     <td className="px-3 py-3">{ride.rideDate}</td>
-                    <td className="px-3 py-3">{ride.departureTime}</td>
                     <td className="px-3 py-3">{ride.timeSlot ?? '-'}</td>
                     <td className="px-3 py-3">
                       {ride.driverNames?.length
@@ -355,7 +341,7 @@ export default function AdminRidesPage() {
                     </td>
                     <td className="px-3 py-3">
                       {ride.trips?.length
-                        ? ride.trips.map((trip) => trip.tripId).join(', ')
+                        ? ride.trips.map((trip) => `${trip.tripId}${trip.departureTime ? ` (${trip.departureTime})` : ''}`).join(', ')
                         : 'No trips yet'}
                     </td>
                     <td className="px-3 py-3">
@@ -377,25 +363,6 @@ export default function AdminRidesPage() {
                         </Button>
                         {ride.status !== 'cancelled' ? (
                           <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                void (async () => {
-                                  setPendingRideAction({ rideId: ride.id, action: 'boarding' });
-                                  try {
-                                    await statusMutation.mutateAsync({ id: ride.id, status: 'boarding' });
-                                  } finally {
-                                    setPendingRideAction((current) =>
-                                      current?.rideId === ride.id ? null : current
-                                    );
-                                  }
-                                })()
-                              }
-                              disabled={!ride.id || rowBusy}
-                            >
-                              {rowBusy && pendingRideAction?.action === 'boarding' ? 'Updating...' : 'Boarding'}
-                            </Button>
                             <Button
                               variant="destructive"
                               size="sm"
@@ -479,7 +446,7 @@ export default function AdminRidesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Ride Instance</DialogTitle>
-            <DialogDescription>Create one departure slot for a specific route/date/time.</DialogDescription>
+            <DialogDescription>Create a ride template for morning, evening, or both. Drivers and trips are added afterward from the details drawer.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {createFormError ? <p className="text-sm text-destructive">{createFormError}</p> : null}
@@ -516,30 +483,33 @@ export default function AdminRidesPage() {
                 />
                 {createFieldErrors.rideDate ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.rideDate[0]}</p> : null}
               </label>
-              <label className="block text-sm">
-                <span className="mb-1 block font-semibold">Departure Time</span>
-                <input
-                  type="time"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2"
-                  value={createForm.departureTime.slice(0, 5)}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, departureTime: event.target.value }))}
-                />
-                {createFieldErrors.departureTime ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.departureTime[0]}</p> : null}
-              </label>
             </div>
-            <label className="block text-sm">
-              <span className="mb-1 block font-semibold">Time Slot</span>
-              <select
-                className="w-full rounded-lg border border-input bg-background px-3 py-2"
-                value={createForm.timeSlot}
-                onChange={(event) => setCreateForm((prev) => ({ ...prev, timeSlot: event.target.value }))}
-              >
-                <option value="morning">Morning</option>
-                <option value="afternoon">Afternoon</option>
-                <option value="evening">Evening</option>
-              </select>
-              {createFieldErrors.timeSlot ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.timeSlot[0]}</p> : null}
-            </label>
+            <fieldset className="block text-sm">
+              <legend className="mb-2 block font-semibold">Time Slots</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(['morning', 'evening'] as const).map((slot) => {
+                  const checked = createForm.timeSlots.includes(slot);
+                  return (
+                    <label key={slot} className="flex items-center gap-3 rounded-lg border border-input bg-background px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setCreateForm((prev) => ({
+                            ...prev,
+                            timeSlots: event.target.checked
+                              ? [...new Set([...prev.timeSlots, slot])]
+                              : prev.timeSlots.filter((value) => value !== slot),
+                          }));
+                        }}
+                      />
+                      <span className="capitalize text-foreground">{slot}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {createFieldErrors.timeSlots ? <p className="mt-1 text-xs text-destructive">{createFieldErrors.timeSlots[0]}</p> : null}
+            </fieldset>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={createMutation.isPending}>

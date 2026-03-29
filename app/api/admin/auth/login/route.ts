@@ -8,8 +8,50 @@ import { zodErrorToFieldErrors } from '@/lib/utils/validation';
 import { logIncoming, logOutgoing, logStep } from '@/lib/utils/logger';
 
 /**
- * POST /api/admin/auth/login
- * Authenticates admin/sub-admin credentials and issues tokens.
+ * @openapi
+ * /api/admin/auth/login:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Log in as an admin
+ *     description: Authenticates admin or sub-admin credentials and returns admin tokens.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       '200':
+ *         description: Admin login succeeded
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasError:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   $ref: '#/components/schemas/AdminLoginResponse'
+ *                 message:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 errors:
+ *                   type: object
+ *       '400':
+ *         description: Invalid login payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *       '401':
+ *         description: Invalid admin credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {

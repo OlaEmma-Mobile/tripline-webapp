@@ -54,7 +54,7 @@ export async function POST(
     const { id } = await context.params;
     const body = assignRideInstanceDriversSchema.parse({
       rideInstanceId: id,
-      driverIds: rawBody.driverIds,
+      assignments: rawBody.assignments,
     });
     logStep('validated ride driver assignment payload');
 

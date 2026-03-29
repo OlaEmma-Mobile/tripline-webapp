@@ -43,10 +43,10 @@ describe('RealtimeService', () => {
       }
     );
 
-    await service.updateRideStatus('ride-1', 'boarding');
+    await service.updateRideStatus('ride-1', 'ongoing');
     expect(writes[0]).toMatchObject({
       path: 'realtime/rides/ride-1/status',
-      value: 'boarding',
+      value: 'ongoing',
     });
   });
 

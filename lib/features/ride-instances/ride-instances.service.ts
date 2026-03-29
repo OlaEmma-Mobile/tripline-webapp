@@ -1,12 +1,13 @@
 import { AppError } from '@/lib/utils/errors';
 import { logStep } from '@/lib/utils/logger';
-import { realtimeService, RealtimeRideStatus } from '@/lib/features/realtime/realtime.service';
+import { realtimeService } from '@/lib/features/realtime/realtime.service';
 import { assignmentsRepository } from '@/lib/features/assignments/assignments.repository';
 import { tripsService } from '@/lib/features/trips/trips.service';
 import { rideInstancesRepository, RideInstancesRepository } from './ride-instances.repository';
 import type {
   CreateRideInstanceInput,
   CreateRideInstancesBulkInput,
+  CreateRideInstancesForSlotsInput,
   DriverLocationUpdateResult,
   RideInstanceRecord,
   RideInstanceDTO,
@@ -41,23 +42,6 @@ export class RideInstancesService {
   constructor(private readonly repo: RideInstancesRepository) {}
 
   /**
-   * Normalizes HH:MM values to HH:MM:SS for consistent storage and uniqueness checks.
-   * @param value Time string in HH:MM or HH:MM:SS.
-   * @returns Time string normalized to HH:MM:SS.
-   */
-  private normalizeDepartureTime(value: string): string {
-    const parts = value.split(':');
-    return parts.length === 2 ? `${parts[0]}:${parts[1]}:00` : value;
-  }
-
-  /**
-   * Maps DB ride status to Firebase realtime status vocabulary.
-   */
-  private mapRealtimeStatus(status: RideInstanceRecord['status']): RealtimeRideStatus {
-    return status === 'departed' ? 'on_trip' : status;
-  }
-
-  /**
    * Validates that referenced route and vehicle exist and are active.
    * @param routeId Route id.
    * @param vehicleId Vehicle id.
@@ -66,7 +50,9 @@ export class RideInstancesService {
   private async validateRoute(routeId: string): Promise<void> {
     const route = await this.repo.getRoute(routeId);
     if (!route) throw new AppError('Route not found', 404);
-    if (route.status !== 'active') throw new AppError('Route must be active for ride scheduling', 400);
+    if (route.status !== 'available' && route.status !== 'active') {
+      throw new AppError('Route must be available for ride scheduling', 400);
+    }
   }
 
   /**
@@ -75,19 +61,36 @@ export class RideInstancesService {
    * @returns Created ride instance with computed availability.
    */
   async create(input: CreateRideInstanceInput): Promise<RideInstanceDTO> {
-    const normalizedInput: CreateRideInstanceInput = {
-      ...input,
-      departureTime: this.normalizeDepartureTime(input.departureTime),
-    };
-    await this.validateRoute(normalizedInput.routeId);
-    const created = await this.repo.create(normalizedInput);
+    await this.validateRoute(input.routeId);
+    const created = await this.repo.create(input);
     const mapped = mapRideRecord(created);
     try {
-      await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+      await realtimeService.updateRideStatus(mapped.id, mapped.status);
     } catch {
       logStep('realtime ride create sync failed', { rideInstanceId: mapped.id });
     }
     return mapped;
+  }
+
+  async createForSlots(input: CreateRideInstancesForSlotsInput): Promise<RideInstanceDTO[]> {
+    await this.validateRoute(input.routeId);
+    const rows = input.timeSlots.map((timeSlot) => ({
+      routeId: input.routeId,
+      rideDate: input.rideDate,
+      timeSlot,
+      status: input.status,
+    }));
+
+    const created = await this.repo.createBulk(rows);
+    const results = created.map(mapRideRecord);
+    for (const mapped of results) {
+      try {
+        await realtimeService.updateRideStatus(mapped.id, mapped.status);
+      } catch {
+        logStep('realtime ride multi-create sync failed', { rideInstanceId: mapped.id });
+      }
+    }
+    return results;
   }
 
   /**
@@ -97,19 +100,18 @@ export class RideInstancesService {
    */
   async createBulk(input: CreateRideInstancesBulkInput): Promise<RideInstanceDTO[]> {
     await this.validateRoute(input.routeId);
-    const rows = input.departureTimes.map((departureTime) => ({
+    const rows = [({
       routeId: input.routeId,
       rideDate: input.rideDate,
-      departureTime: this.normalizeDepartureTime(departureTime),
       timeSlot: input.timeSlot,
       status: input.status,
-    }));
+    })];
 
     const created = await this.repo.createBulk(rows);
     const results: RideInstanceDTO[] = created.map(mapRideRecord);
     for (const mapped of results) {
       try {
-        await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+        await realtimeService.updateRideStatus(mapped.id, mapped.status);
       } catch {
         logStep('realtime ride bulk-create sync failed', { rideInstanceId: mapped.id });
       }
@@ -135,6 +137,8 @@ export class RideInstancesService {
           driverTripId: trip.driverTripId,
           driverId: trip.driverId,
           vehicleId: trip.vehicleId,
+          departureTime: trip.departureTime,
+          estimatedDurationMinutes: trip.estimatedDurationMinutes,
           status: trip.status,
           capacity: trip.capacity,
           reservedSeats: trip.reservedSeats,
@@ -160,7 +164,7 @@ export class RideInstancesService {
         Object.values(tripsByRide)
           .flat()
           .map((trip) => trip.vehicleId)
-          .filter(Boolean)
+          .filter((value): value is string => Boolean(value))
       ),
     ];
     const [routeNames, vehiclePlates, driverNamesByRide, pickupCounts] = await Promise.all([
@@ -177,7 +181,7 @@ export class RideInstancesService {
         routeName: routeNames[item.routeId] ?? item.routeId,
         vehiclePlate:
           (tripsByRide[item.id]?.[0]?.vehicleId
-            ? vehiclePlates[tripsByRide[item.id][0].vehicleId] ?? tripsByRide[item.id][0].vehicleId
+            ? vehiclePlates[tripsByRide[item.id][0].vehicleId as string] ?? tripsByRide[item.id][0].vehicleId
             : item.vehicleId
               ? vehiclePlates[item.vehicleId] ?? item.vehicleId
               : null),
@@ -190,6 +194,8 @@ export class RideInstancesService {
           driverTripId: trip.driverTripId,
           driverId: trip.driverId,
           vehicleId: trip.vehicleId,
+          departureTime: trip.departureTime,
+          estimatedDurationMinutes: trip.estimatedDurationMinutes,
           status: trip.status,
           capacity: trip.capacity,
           reservedSeats: trip.reservedSeats,
@@ -216,7 +222,7 @@ export class RideInstancesService {
       limit: 200,
       routeId,
       rideDate,
-      statuses: ['scheduled', 'boarding'],
+      statuses: ['scheduled'],
     });
     return items.filter((item) => (item.trips?.length ?? 0) > 0);
   }
@@ -242,18 +248,10 @@ export class RideInstancesService {
       if (vehicle.status !== 'active') throw new AppError('Vehicle must be active for ride scheduling', 400);
     }
 
-    const normalizedInput: UpdateRideInstanceInput = {
-      ...input,
-      departureTime:
-        input.departureTime !== undefined
-          ? this.normalizeDepartureTime(input.departureTime)
-          : undefined,
-    };
-
-    const updated = await this.repo.update(id, normalizedInput);
+    const updated = await this.repo.update(id, input);
     const mapped = mapRideRecord(updated);
     try {
-      await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+      await realtimeService.updateRideStatus(mapped.id, mapped.status);
     } catch {
       logStep('realtime ride status sync failed', { rideInstanceId: mapped.id });
     }
@@ -271,9 +269,10 @@ export class RideInstancesService {
       throw new AppError('Ride instance not found', 404);
     }
     const cancelled = await this.repo.cancel(id);
+    await tripsService.cancelActiveByRideInstanceId(id);
     const mapped = mapRideRecord(cancelled);
     try {
-      await realtimeService.updateRideStatus(mapped.id, this.mapRealtimeStatus(mapped.status));
+      await realtimeService.updateRideStatus(mapped.id, mapped.status);
     } catch {
       logStep('realtime ride cancel sync failed', { rideInstanceId: mapped.id });
     }
@@ -320,7 +319,7 @@ export class RideInstancesService {
       throw new AppError('Ride instance not found', 404);
     }
 
-    if (!['scheduled', 'boarding', 'departed'].includes(ride.status)) {
+    if (ride.status !== 'scheduled') {
       throw new AppError('Ride is not active for location updates', 409);
     }
 
@@ -362,7 +361,6 @@ export class RideInstancesService {
       id: details.id,
       rideId: details.ride_id,
       rideDate: details.ride_date,
-      departureTime: details.departure_time,
       timeSlot: details.time_slot,
       status: details.status,
       route: details.route,
@@ -374,6 +372,8 @@ export class RideInstancesService {
         driverTripId: trip.driverTripId,
         driverId: trip.driverId,
         vehicleId: trip.vehicleId,
+        departureTime: trip.departureTime,
+        estimatedDurationMinutes: trip.estimatedDurationMinutes,
         status: trip.status,
         capacity: trip.capacity,
         reservedSeats: trip.reservedSeats,

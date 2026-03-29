@@ -4,7 +4,7 @@ import { usersRepository, UsersRepository } from '@/lib/features/users/users.rep
 import { AppError } from '@/lib/utils/errors';
 import { logStep } from '@/lib/utils/logger';
 
-export type RealtimeRideStatus = 'scheduled' | 'boarding' | 'on_trip' | 'completed' | 'cancelled';
+export type RealtimeRideStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
 
 export interface CreateUserNotificationInput {
   userId: string;

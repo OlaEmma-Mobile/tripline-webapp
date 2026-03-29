@@ -196,6 +196,23 @@ export class AuthRepository {
     }
   }
 
+  /** Update a user's ride passcode hash. */
+  async updateRidePasscode(userId: string, passcodeHash: string): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({
+        ride_passcode_hash: passcodeHash,
+        ride_passcode_set_at: now,
+        ride_passcode_updated_at: now,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      throw new AppError('Unable to update ride passcode', 500);
+    }
+  }
+
   /** Update user account status. */
   async updateUserStatus(
     userId: string,

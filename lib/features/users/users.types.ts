@@ -9,6 +9,9 @@ export interface UserProfileRecord {
   role: UserRole;
   email_verified_at: string | null;
   status: UserStatus;
+  ride_passcode_hash: string | null;
+  ride_passcode_set_at: string | null;
+  ride_passcode_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +24,7 @@ export interface UserMeDTO {
   phone: string | null;
   role: UserRole;
   emailVerified: boolean;
+  hasRidePasscode: boolean;
   accountStatus: UserStatus;
   driverKycStatus: KycStatus | null;
   createdAt: string;

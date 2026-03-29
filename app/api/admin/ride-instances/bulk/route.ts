@@ -10,7 +10,7 @@ import { logIncoming, logOutgoing, logStep } from '@/lib/utils/logger';
 
 /**
  * POST /api/admin/ride-instances/bulk
- * Creates multiple ride instances for one route/date using multiple departure times.
+ * Creates one or more ride instance templates for one route/date/time slot.
  * Access: admin, sub_admin.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = createRideInstanceBulkSchema.parse(rawBody);
     logStep('validated ride instance bulk create payload');
     logStep('creating bulk ride instances', {
-      count: body.departureTimes.length,
+      count: 1,
       routeId: body.routeId,
       rideDate: body.rideDate,
     });

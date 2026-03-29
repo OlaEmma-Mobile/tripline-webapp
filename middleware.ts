@@ -10,6 +10,8 @@ const AUTH_WHITELIST = [
   '/api/auth/refresh',
   '/api/admin/auth/login',
   '/api/admin/auth/refresh',
+  '/api/openapi',
+  '/api/routes',
   '/api/paystack/webhook',
 ];
 

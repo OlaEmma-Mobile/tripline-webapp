@@ -6,8 +6,39 @@ import { errorResponse, jsonResponse } from '@/lib/utils/responses';
 import { logIncoming, logOutgoing } from '@/lib/utils/logger';
 
 /**
- * GET /api/users/me
- * Returns authenticated user profile and account status flags.
+ * @openapi
+ * /api/users/me:
+ *   get:
+ *     tags:
+ *       - Users
+ *     summary: Fetch the authenticated user profile
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Authenticated profile returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasError:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   $ref: '#/components/schemas/UserProfile'
+ *                 message:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 errors:
+ *                   type: object
+ *       '401':
+ *         description: Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {

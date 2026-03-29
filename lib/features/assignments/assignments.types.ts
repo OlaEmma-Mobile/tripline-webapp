@@ -40,6 +40,8 @@ export interface AssignmentDTO {
   driverTripId?: string;
   tripId?: string;
   tripCode?: string;
+  departureTime?: string;
+  estimatedDurationMinutes?: number;
   status: AssignmentStatus;
   assignedAt: string;
   endedAt: string | null;
@@ -58,5 +60,9 @@ export interface AssignDriverRouteInput {
 
 export interface AssignRideInstanceDriversInput {
   rideInstanceId: string;
-  driverIds: string[];
+  assignments: Array<{
+    driverId: string;
+    departureTime: string;
+    estimatedDurationMinutes: number;
+  }>;
 }

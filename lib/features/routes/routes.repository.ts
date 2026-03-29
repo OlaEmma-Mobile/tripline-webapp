@@ -17,7 +17,7 @@ function toRouteInsert(input: RouteCreateInput): Record<string, unknown> {
     to_latitude: input.toLatitude,
     to_longitude: input.toLongitude,
     base_token_cost: input.baseTokenCost,
-    status: input.status ?? 'active',
+    status: input.status ?? 'available',
   };
 }
 
@@ -38,6 +38,12 @@ function toRouteUpdate(input: RouteUpdateInput): Record<string, unknown> {
   if (input.status !== undefined) out.status = input.status;
   out.updated_at = new Date().toISOString();
   return out;
+}
+
+function applyStatusFilter(query: any, status?: RouteFilters['status']) {
+  if (!status) return query;
+  if (status === 'available') return query.in('status', ['available', 'active']);
+  return query.in('status', ['coming_soon', 'inactive']);
 }
 
 export class RoutesRepository {
@@ -66,7 +72,7 @@ export class RoutesRepository {
   async listRoutes(filters: RouteFilters): Promise<{ items: RouteRecord[]; total: number }> {
     let query = supabaseAdmin.from('routes').select('*', { count: 'exact' });
 
-    if (filters.status) query = query.eq('status', filters.status);
+    query = applyStatusFilter(query, filters.status) as typeof query;
     if (filters.companyId) query = query.eq('company_id', filters.companyId);
 
     const from = (filters.page - 1) * filters.limit;
@@ -174,7 +180,7 @@ export class RoutesRepository {
       .or(`name.ilike.%${q}%,from_name.ilike.%${q}%,to_name.ilike.%${q}%`)
       .limit(options.limit);
 
-    if (options.status) query = query.eq('status', options.status);
+    query = applyStatusFilter(query, options.status as RouteFilters['status']) as typeof query;
     if (options.companyId) query = query.eq('company_id', options.companyId);
 
     const { data, error } = await query.returns<Pick<RouteRecord, 'id'>[]>();

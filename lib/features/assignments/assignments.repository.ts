@@ -19,7 +19,7 @@ interface VehicleLookup {
 
 interface RouteLookup {
   id: string;
-  status: 'active' | 'inactive';
+  status: 'available' | 'coming_soon' | 'active' | 'inactive';
 }
 
 interface RideInstanceLookup {
@@ -28,13 +28,18 @@ interface RideInstanceLookup {
   vehicle_id?: string | null;
   ride_date: string;
   time_slot: 'morning' | 'afternoon' | 'evening';
-  status: 'scheduled' | 'boarding' | 'departed' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'cancelled';
 }
 
 /**
  * Persistence for driver assignment workflows.
  */
 export class AssignmentsRepository {
+  normalizeTime(value: string): string {
+    const parts = value.split(':');
+    return parts.length === 2 ? `${parts[0]}:${parts[1]}:00` : value;
+  }
+
   /** Get driver user for assignment validation. */
   async getDriver(driverId: string): Promise<DriverLookup | null> {
     const { data, error } = await supabaseAdmin

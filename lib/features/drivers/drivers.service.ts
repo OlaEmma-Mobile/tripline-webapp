@@ -47,6 +47,7 @@ function mapManifestTrip(record: DriverManifestRideRow): DriverManifestDTO['trip
     rideId: record.ride_id,
     rideDate: record.ride_date,
     departureTime: record.departure_time,
+    estimatedDurationMinutes: record.estimated_duration_minutes,
     timeSlot: record.time_slot,
     status: record.status,
     vehiclePlate: record.vehicle?.registration_number ?? 'Unknown vehicle',
@@ -192,6 +193,23 @@ export class DriversService {
     const details = await this.repo.getManifestDetails(driverId, rideInstanceId);
     if (!details) {
       throw new AppError('Ride instance not found', 404);
+    }
+    return details;
+  }
+
+  /**
+   * Get a driver's detailed manifest for a single trip.
+   * @param driverId Driver user id.
+   * @param tripId Trip id.
+   * @returns Full manifest details with passenger list.
+   */
+  async getManifestDetailsByTrip(
+    driverId: string,
+    tripId: string
+  ): Promise<DriverManifestDetailDTO> {
+    const details = await this.repo.getManifestDetailsByTrip(driverId, tripId);
+    if (!details) {
+      throw new AppError('Trip not found', 404);
     }
     return details;
   }

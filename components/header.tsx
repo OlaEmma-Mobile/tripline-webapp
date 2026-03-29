@@ -1,142 +1,131 @@
 'use client';
 
-import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+
+const navLinks = [
+  { label: 'Routes', href: '/routes', sectionId: 'routes' },
+  { label: 'How It Works', href: '/#how-it-works', sectionId: 'how-it-works' },
+  { label: 'Why Tripline', href: '/#why', sectionId: 'why' },
+  { label: 'Drive With Us', href: '/#drivers', sectionId: 'drivers' },
+];
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const scrollToSection = (id: string) => {
+    if (pathname !== '/') {
+      window.location.href = `/#${id}`;
+      return;
+    }
+
     const element = document.getElementById(id);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     setIsMenuOpen(false);
   };
 
+  const handleNavClick = (href: string, sectionId?: string) => {
+    if (sectionId) {
+      scrollToSection(sectionId);
+      return;
+    }
+    setIsMenuOpen(false);
+    window.location.href = href;
+  };
+
   return (
-    <header className="fixed top-4 left-4 right-4 z-50 w-auto mx-auto max-w-7xl border border-border bg-background/80 backdrop-blur-md rounded-full">
-      <div className="px-6 py-3">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
+    <motion.header
+      initial={{ y: -30, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="fixed inset-x-0 top-4 z-50 px-4 sm:px-4"
+    >
+      <div className={`mx-auto max-w-7xl- container ${isMenuOpen ? 'rounded-2xl' : 'rounded-4xl'} border border-border/70 bg-background/80 shadow-lg shadow-black/5 backdrop-blur-xl`}>
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/TRIPLINE%201-T0uXpNlWuBnWJ9udnApnnZXJoNoUEk.png"
-              alt="Tripline - Reliable Shared Mobility"
-              className="h-9 w-[100px] object-contain"
+              alt="Tripline"
+              className="h-9 md:w-25 w-20 object-contain"
             />
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="/routes"
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Explore Routes
-            </Link>
-            <button
-              onClick={() => scrollToSection('routes')}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Featured Routes
-            </button>
-            <button
-              onClick={() => scrollToSection('how-it-works')}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              How It Works
-            </button>
-            <button
-              onClick={() => scrollToSection('why')}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Why Tripline
-            </button>
-            <button
-              onClick={() => scrollToSection('drivers')}
-              className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-            >
-              Drive with Us
-            </button>
+          <nav className="hidden items-center gap-6 lg:flex">
+            {navLinks.map((link) => (
+              <button
+                key={link.label}
+                onClick={() => handleNavClick(link.href, link.sectionId)}
+                className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+              >
+                {link.label}
+              </button>
+            ))}
           </nav>
 
-          {/* Auth + CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" asChild className="text-sm">
+          <div className="hidden items-center gap-3 lg:flex">
+            <Button variant="ghost" asChild className="rounded-full px-4 text-sm">
               <Link href="/auth/login">Login</Link>
             </Button>
             <Button asChild className="rounded-full px-5 text-sm">
-              <Link href="/auth/register">Register</Link>
-            </Button>
-            <Button
-              onClick={() => scrollToSection('waitlist')}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 text-sm"
-            >
-              Join Waitlist
+              <Link href="/auth/register">Get Started</Link>
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="inline-flex rounded-full border border-border/70 p-2 text-foreground transition-colors hover:bg-muted lg:hidden"
+            onClick={() => setIsMenuOpen((current) => !current)}
+            aria-label="Toggle navigation menu"
           >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden pt-4 border-t border-border mt-4">
-            <button
-              onClick={() => scrollToSection('routes')}
-              className="block w-full text-left py-2 text-sm font-medium text-foreground hover:text-primary"
+        <AnimatePresence>
+          {isMenuOpen ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden border-t border-border/70 lg:hidden"
             >
-              Routes
-            </button>
-            <button
-              onClick={() => scrollToSection('how-it-works')}
-              className="block w-full text-left py-2 text-sm font-medium text-foreground hover:text-primary"
-            >
-              How It Works
-            </button>
-            <button
-              onClick={() => scrollToSection('why')}
-              className="block w-full text-left py-2 text-sm font-medium text-foreground hover:text-primary"
-            >
-              Why Tripline
-            </button>
-            <div className="mt-4 space-y-2">
-              <Button asChild variant="ghost" className="w-full text-sm">
-                <Link href="/auth/login">Login</Link>
-              </Button>
-              <Button asChild className="w-full text-sm">
-                <Link href="/auth/register">Register</Link>
-              </Button>
-              <Button
-                onClick={() => scrollToSection('waitlist')}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-full text-sm"
-              >
-                Join Waitlist
-              </Button>
-            </div>
-          </div>
-        )}
+              <div className="space-y-2 px-4 py-4 sm:px-6">
+                {navLinks.map((link, index) => (
+                  <motion.button
+                    key={link.label}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    onClick={() => handleNavClick(link.href, link.sectionId)}
+                    className="block w-full rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted hover:text-primary"
+                  >
+                    {link.label}
+                  </motion.button>
+                ))}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <Button variant="ghost" asChild className="rounded-full">
+                    <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
+                      Login
+                    </Link>
+                  </Button>
+                  <Button asChild className="rounded-full">
+                    <Link href="/auth/register" onClick={() => setIsMenuOpen(false)}>
+                      Get Started
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
-    </header>
+    </motion.header>
   );
 }

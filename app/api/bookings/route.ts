@@ -9,9 +9,64 @@ import { zodErrorToFieldErrors } from '@/lib/utils/validation';
 import { logIncoming, logOutgoing, logStep } from '@/lib/utils/logger';
 
 /**
- * POST /api/bookings
- * Creates a booking and deducts rider tokens atomically in one database transaction.
- * Access: rider.
+ * @openapi
+ * /api/bookings:
+ *   post:
+ *     tags:
+ *       - Bookings
+ *     summary: Create a booking for a trip
+ *     description: Books a scheduled trip, stores pickup point coordinates on the booking, and deducts rider tokens atomically.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateBookingRequest'
+ *     responses:
+ *       '201':
+ *         description: Booking created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasError:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   $ref: '#/components/schemas/CreateBookingResult'
+ *                 message:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 errors:
+ *                   type: object
+ *       '400':
+ *         description: Invalid booking payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *       '401':
+ *         description: Missing or invalid token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *       '403':
+ *         description: Only riders can create bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
+ *       '409':
+ *         description: Trip is not bookable or rider lacks capacity/tokens
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorEnvelope'
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {

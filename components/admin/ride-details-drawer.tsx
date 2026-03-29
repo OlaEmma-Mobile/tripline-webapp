@@ -26,7 +26,6 @@ interface RideDetailsPayload {
     rideId: string;
     routeId: string;
     rideDate: string;
-    departureTime: string;
     timeSlot: string;
     status: string;
     route: { id: string; name: string; from_name: string; to_name: string } | null;
@@ -48,7 +47,9 @@ interface RideDetailsPayload {
     trips: Array<{
       id: string;
       tripId: string;
-      driverTripId: string;
+      driverTripId: string | null;
+      departureTime: string;
+      estimatedDurationMinutes: number;
       status: string;
       capacity: number;
       reservedSeats: number;
@@ -91,13 +92,19 @@ interface DriverOption {
   } | null;
 }
 
+interface SelectedDriverConfig {
+  departureTime: string;
+  estimatedDurationMinutes: string;
+}
+
 export function RideDetailsDrawer({
   open,
   rideInstanceId,
   onOpenChange,
 }: RideDetailsDrawerProps) {
   const queryClient = useQueryClient();
-  const [selectedDriverIds, setSelectedDriverIds] = useState<string[]>([]);
+  const [selectedDrivers, setSelectedDrivers] = useState<Record<string, SelectedDriverConfig>>({});
+  const [replicateDuration, setReplicateDuration] = useState<'7_days' | '1_month'>('7_days');
 
   const detailsQuery = useQuery({
     queryKey: adminQueryKeys.rideDetails(rideInstanceId ?? 'pending'),
@@ -139,19 +146,27 @@ export function RideDetailsDrawer({
 
   const assignMutation = useMutation({
     mutationFn: async (): Promise<void> => {
-      if (!rideInstanceId || selectedDriverIds.length === 0) {
+      if (!rideInstanceId) {
+        throw new Error('Ride instance is required');
+      }
+      const assignments = Object.entries(selectedDrivers).map(([driverId, config]) => ({
+        driverId,
+        departureTime: config.departureTime,
+        estimatedDurationMinutes: Number(config.estimatedDurationMinutes),
+      }));
+      if (assignments.length === 0) {
         throw new Error('Choose one or more drivers before assigning');
       }
       const response = await apiRequest(`/api/admin/ride-instances/${rideInstanceId}/drivers`, {
         method: 'POST',
-        body: JSON.stringify({ driverIds: selectedDriverIds }),
+        body: JSON.stringify({ assignments }),
       });
       if (response.hasError) {
-        throw new Error(response.message || 'Unable to assign driver');
+        throw new Error(response.message || 'Unable to assign drivers');
       }
     },
     onSuccess: async () => {
-      setSelectedDriverIds([]);
+      setSelectedDrivers({});
       await refreshQueries();
     },
   });
@@ -171,6 +186,20 @@ export function RideDetailsDrawer({
     onSuccess: refreshQueries,
   });
 
+  const replicateMutation = useMutation({
+    mutationFn: async (): Promise<void> => {
+      if (!rideInstanceId) throw new Error('Ride instance is required');
+      const response = await apiRequest('/api/admin/ride-instances/replicate', {
+        method: 'POST',
+        body: JSON.stringify({ sourceRideInstanceId: rideInstanceId, duration: replicateDuration }),
+      });
+      if (response.hasError) {
+        throw new Error(response.message || 'Unable to replicate ride templates');
+      }
+    },
+    onSuccess: refreshQueries,
+  });
+
   const totalTokensConsumed = useMemo(
     () => detailsQuery.data?.bookings.reduce((sum, booking) => sum + (booking.tokenCost ?? 0), 0) ?? 0,
     [detailsQuery.data]
@@ -180,7 +209,7 @@ export function RideDetailsDrawer({
     <DialogRoot
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) setSelectedDriverIds([]);
+        if (!nextOpen) setSelectedDrivers({});
         onOpenChange(nextOpen);
       }}
     >
@@ -188,7 +217,7 @@ export function RideDetailsDrawer({
         <DialogHeader>
           <DialogTitle>Ride Details</DialogTitle>
           <DialogDescription>
-            Create the ride first, then assign one or more drivers. Each assignment creates its own trip under this ride instance.
+            Create the ride template first, then assign one or more drivers. Each assignment creates its own timed trip under this ride instance.
           </DialogDescription>
         </DialogHeader>
 
@@ -211,7 +240,7 @@ export function RideDetailsDrawer({
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Ride</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{detailsQuery.data.ride.rideId}</p>
                 <p className="text-xs text-muted-foreground">
-                  {detailsQuery.data.ride.rideDate} · {detailsQuery.data.ride.departureTime}
+                  {detailsQuery.data.ride.rideDate} · {detailsQuery.data.ride.timeSlot}
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-background p-4">
@@ -228,7 +257,7 @@ export function RideDetailsDrawer({
               <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
                 <p className="mt-2 text-lg font-semibold text-foreground">{detailsQuery.data.ride.status}</p>
-                <p className="text-xs text-muted-foreground">{detailsQuery.data.ride.timeSlot}</p>
+                <p className="text-xs text-muted-foreground">Template slot</p>
               </div>
               <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Trips Created</p>
@@ -241,11 +270,39 @@ export function RideDetailsDrawer({
             </section>
 
             <section className="rounded-2xl border border-border bg-card p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Replicate This Template</h3>
+                  <p className="text-sm text-muted-foreground">Create future ride instances for this same slot and carry forward current driver assignments and trip timings.</p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <label className="text-sm">
+                    <span className="mb-1 block font-medium text-foreground">Range</span>
+                    <select
+                      className="rounded-lg border border-input bg-background px-3 py-2"
+                      value={replicateDuration}
+                      onChange={(event) => setReplicateDuration(event.target.value as '7_days' | '1_month')}
+                    >
+                      <option value="7_days">Next 7 days</option>
+                      <option value="1_month">Next 1 month</option>
+                    </select>
+                  </label>
+                  <Button onClick={() => void replicateMutation.mutateAsync()} disabled={replicateMutation.isPending}>
+                    {replicateMutation.isPending ? 'Replicating...' : 'Replicate rides'}
+                  </Button>
+                </div>
+              </div>
+              {replicateMutation.isError ? (
+                <p className="mt-2 text-sm text-destructive">{(replicateMutation.error as Error).message}</p>
+              ) : null}
+            </section>
+
+            <section className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Driver Assignment Flow</h3>
                   <p className="text-sm text-muted-foreground">
-                    Step 1: create the ride instance. Step 2: pick only eligible drivers below. Step 3: each assignment creates one trip and uses the driver&apos;s active vehicle automatically.
+                    Step 1: create the ride template. Step 2: pick eligible drivers below. Step 3: for each selected driver, enter a departure time and estimated duration. Each assignment creates one timed trip using the driver&apos;s active vehicle automatically.
                   </p>
                 </div>
               </div>
@@ -255,39 +312,88 @@ export function RideDetailsDrawer({
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Eligible Drivers</p>
                   <div className="mt-3 grid gap-2">
                     {(availableDriversQuery.data ?? []).map((driver) => {
-                      const checked = selectedDriverIds.includes(driver.id);
+                      const checked = Boolean(selectedDrivers[driver.id]);
                       return (
-                        <label key={driver.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2">
-                          <input
-                            type="checkbox"
-                            className="mt-1"
-                            checked={checked}
-                            onChange={(event) => {
-                              setSelectedDriverIds((current) =>
-                                event.target.checked
-                                  ? [...current, driver.id]
-                                  : current.filter((id) => id !== driver.id)
-                              );
-                            }}
-                          />
-                          <span className="text-sm">
-                            <span className="block font-medium text-foreground">
-                              {`${driver.firstName} ${driver.lastName}`.trim()}
+                        <div key={driver.id} className="rounded-lg border border-border px-3 py-2">
+                          <label className="flex cursor-pointer items-start gap-3">
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={checked}
+                              onChange={(event) => {
+                                setSelectedDrivers((current) => {
+                                  if (event.target.checked) {
+                                    return {
+                                      ...current,
+                                      [driver.id]: { departureTime: '06:30', estimatedDurationMinutes: '60' },
+                                    };
+                                  }
+                                  const next = { ...current };
+                                  delete next[driver.id];
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="text-sm">
+                              <span className="block font-medium text-foreground">
+                                {`${driver.firstName} ${driver.lastName}`.trim()}
+                              </span>
+                              <span className="block text-xs text-muted-foreground">
+                                {driver.assignedVehicle?.registrationNumber ?? 'No vehicle'}
+                              </span>
                             </span>
-                            <span className="block text-xs text-muted-foreground">
-                              {driver.assignedVehicle?.registrationNumber ?? 'No vehicle'}
-                            </span>
-                          </span>
-                        </label>
+                          </label>
+                          {checked ? (
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <label className="text-xs">
+                                <span className="mb-1 block font-medium text-foreground">Departure Time</span>
+                                <input
+                                  type="time"
+                                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                                  value={selectedDrivers[driver.id]?.departureTime ?? '06:30'}
+                                  onChange={(event) =>
+                                    setSelectedDrivers((current) => ({
+                                      ...current,
+                                      [driver.id]: {
+                                        ...(current[driver.id] ?? { departureTime: '06:30', estimatedDurationMinutes: '60' }),
+                                        departureTime: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                              </label>
+                              <label className="text-xs">
+                                <span className="mb-1 block font-medium text-foreground">Estimated Duration (mins)</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                                  value={selectedDrivers[driver.id]?.estimatedDurationMinutes ?? '60'}
+                                  onChange={(event) =>
+                                    setSelectedDrivers((current) => ({
+                                      ...current,
+                                      [driver.id]: {
+                                        ...(current[driver.id] ?? { departureTime: '06:30', estimatedDurationMinutes: '60' }),
+                                        estimatedDurationMinutes: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                />
+                              </label>
+                            </div>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
                 </div>
                 <Button
                   onClick={() => void assignMutation.mutateAsync()}
-                  disabled={selectedDriverIds.length === 0 || assignMutation.isPending}
+                  disabled={Object.keys(selectedDrivers).length === 0 || assignMutation.isPending}
                 >
-                  {assignMutation.isPending ? 'Assigning...' : `Assign ${selectedDriverIds.length} Driver${selectedDriverIds.length === 1 ? '' : 's'}`}
+                  {assignMutation.isPending
+                    ? 'Assigning...'
+                    : `Assign ${Object.keys(selectedDrivers).length} Driver${Object.keys(selectedDrivers).length === 1 ? '' : 's'}`}
                 </Button>
               </div>
               {availableDriversQuery.isError ? (
@@ -295,7 +401,7 @@ export function RideDetailsDrawer({
               ) : null}
               {!availableDriversQuery.isLoading && (availableDriversQuery.data?.length ?? 0) === 0 ? (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  No eligible drivers available for this ride. Drivers shown here must already have active vehicle assignments and must not already be assigned to this ride.
+                  No eligible drivers available for this ride. Drivers shown here must already have active vehicle assignments and must not already be assigned to another ride instance in this same slot.
                 </p>
               ) : null}
 
@@ -351,15 +457,16 @@ export function RideDetailsDrawer({
                       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                           <p className="font-semibold text-foreground">
-                            {trip.tripId} · {trip.driverTripId}
+                            {trip.tripId}{trip.driverTripId ? ` · ${trip.driverTripId}` : ''}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {trip.driver
-                              ? `${trip.driver.firstName} ${trip.driver.lastName}`.trim()
-                              : 'Driver unavailable'}
+                            {trip.driver ? `${trip.driver.firstName} ${trip.driver.lastName}`.trim() : 'Awaiting driver reassignment'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {trip.departureTime} · {trip.estimatedDurationMinutes} mins
                           </p>
                         </div>
-                        <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        <span className={`rounded-full ${trip.status === 'cancelled' ? 'text-red-600 bg-red-100' : trip.status === 'completed' ? 'text-green-600 bg-green-200' : trip.status === 'awaiting_driver' ? 'text-amber-700 bg-amber-100' : 'text-blue-600 bg-blue-200'} px-2 py-1 text-xs`}>
                           {trip.status}
                         </span>
                       </div>
@@ -367,7 +474,7 @@ export function RideDetailsDrawer({
                         <div>
                           <p className="text-xs uppercase tracking-wide text-muted-foreground">Vehicle</p>
                           <p className="text-sm font-medium text-foreground">
-                            {trip.vehicle?.registrationNumber ?? 'Unknown vehicle'}
+                            {trip.vehicle?.registrationNumber ?? (trip.status === 'awaiting_driver' ? 'Vehicle pending reassignment' : 'Unknown vehicle')}
                           </p>
                           <p className="text-xs text-muted-foreground">{trip.vehicle?.model ?? 'Model unavailable'}</p>
                         </div>

@@ -1,7 +1,7 @@
 export type RegisterRole = 'rider' | 'driver';
 export type UserRole = 'rider' | 'driver' | 'admin' | 'sub_admin';
 export type UserStatus = 'active' | 'inactive' | 'restricted';
-export type OtpPurpose = 'verify_email' | 'reset_password';
+export type OtpPurpose = 'verify_email' | 'reset_password' | 'reset_ride_passcode';
 export type KycStatus = 'pending' | 'verified' | 'rejected';
 
 export interface RegisterPayload {
@@ -60,6 +60,9 @@ export interface UserRecord {
   password_hash: string;
   email_verified_at: string | null;
   status: UserStatus;
+  ride_passcode_hash?: string | null;
+  ride_passcode_set_at?: string | null;
+  ride_passcode_updated_at?: string | null;
 }
 
 export interface OtpRecord {

@@ -42,6 +42,30 @@ export class AdminOpsRepository {
   }
 
   /**
+   * Detects whether boarding verification columns are missing from bookings.
+   */
+  private isMissingBoardingVerificationSchema(
+    error: { message?: string; details?: string; hint?: string; code?: string } | null
+  ): boolean {
+    if (!error) return false;
+    const text = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+    return (
+      error.code === '42703' ||
+      text.includes('pickup_point_latitude') ||
+      text.includes('pickup_point_longitude') ||
+      text.includes('boarding_status') ||
+      text.includes('boarding_expires_at') ||
+      text.includes('boarding_requested_at') ||
+      text.includes('boarding_requested_by_driver_id') ||
+      text.includes('boarding_approved_at') ||
+      text.includes('boarding_declined_at') ||
+      text.includes('boarding_decline_reason') ||
+      text.includes('boarding_verified_at') ||
+      text.includes('boarding_verification_method')
+    );
+  }
+
+  /**
    * Loads assigned driver records for ride instances.
    */
   private async getDriversByRideInstanceIds(
@@ -828,7 +852,7 @@ export class AdminOpsRepository {
 
     let bookingsQuery = supabaseAdmin
       .from('bookings')
-      .select('id, trip_id, ride_instance_id, rider_id, pickup_point_id, status, seat_count, token_cost, created_at')
+      .select('id, trip_id, ride_instance_id, rider_id, pickup_point_id, pickup_point_latitude, pickup_point_longitude, status, boarding_status, boarding_expires_at, boarding_requested_at, boarding_requested_by_driver_id, boarding_approved_at, boarding_declined_at, boarding_decline_reason, boarding_verified_at, boarding_verification_method, seat_count, token_cost, created_at')
       .order('created_at', { ascending: true });
 
     if (tripIds.length > 0) {
@@ -837,19 +861,73 @@ export class AdminOpsRepository {
       bookingsQuery = bookingsQuery.eq('ride_instance_id', rideInstanceId);
     }
 
-    const { data: bookings, error: bookingsError } = await bookingsQuery.returns<
+    let { data: bookings, error: bookingsError } = await bookingsQuery.returns<
       Array<{
         id: string;
         trip_id: string | null;
         ride_instance_id: string;
         rider_id: string;
         pickup_point_id: string | null;
+        pickup_point_latitude: number | null;
+        pickup_point_longitude: number | null;
         status: string;
+        boarding_status: string;
+        boarding_expires_at: string | null;
+        boarding_requested_at: string | null;
+        boarding_requested_by_driver_id: string | null;
+        boarding_approved_at: string | null;
+        boarding_declined_at: string | null;
+        boarding_decline_reason: string | null;
+        boarding_verified_at: string | null;
+        boarding_verification_method: string | null;
         seat_count: number;
         token_cost: number;
         created_at: string;
       }>
     >();
+
+    if (this.isMissingBoardingVerificationSchema(bookingsError)) {
+      let fallbackQuery = supabaseAdmin
+        .from('bookings')
+        .select('id, trip_id, ride_instance_id, rider_id, pickup_point_id, status, seat_count, token_cost, created_at')
+        .order('created_at', { ascending: true });
+
+      if (tripIds.length > 0) {
+        fallbackQuery = fallbackQuery.in('trip_id', tripIds);
+      } else {
+        fallbackQuery = fallbackQuery.eq('ride_instance_id', rideInstanceId);
+      }
+
+      const fallback = await fallbackQuery.returns<
+        Array<{
+          id: string;
+          trip_id: string | null;
+          ride_instance_id: string;
+          rider_id: string;
+          pickup_point_id: string | null;
+          status: string;
+          seat_count: number;
+          token_cost: number;
+          created_at: string;
+        }>
+      >();
+
+      bookingsError = fallback.error;
+      bookings = (fallback.data ?? []).map((row) => ({
+        ...row,
+        pickup_point_latitude: null,
+        pickup_point_longitude: null,
+        boarding_status: 'none',
+        boarding_expires_at: null,
+        boarding_requested_at: null,
+        boarding_requested_by_driver_id: null,
+        boarding_approved_at: null,
+        boarding_declined_at: null,
+        boarding_decline_reason: null,
+        boarding_verified_at: null,
+        boarding_verification_method: null,
+      }));
+    }
 
     if (bookingsError) {
       throw new AppError('Unable to fetch ride bookings', 500);
@@ -889,7 +967,6 @@ export class AdminOpsRepository {
         rideId: ride.ride_id,
         routeId: ride.route_id,
         rideDate: ride.ride_date,
-        departureTime: ride.departure_time,
         timeSlot: ride.time_slot,
         status: ride.status,
         route: ride.route,
@@ -898,6 +975,8 @@ export class AdminOpsRepository {
           id: trip.id,
           tripId: trip.trip_id,
           driverTripId: trip.driver_trip_id,
+          departureTime: trip.departure_time,
+          estimatedDurationMinutes: trip.estimated_duration_minutes,
           status: trip.status,
           capacity: trip.capacity,
           reservedSeats: trip.reserved_seats,
@@ -924,9 +1003,25 @@ export class AdminOpsRepository {
       bookings: (bookings ?? []).map((row) => ({
         id: row.id,
         status: row.status,
+        boardingStatus: row.boarding_status,
+        boardingExpiresAt: row.boarding_expires_at,
+        boardingRequestedAt: row.boarding_requested_at,
+        boardingRequestedByDriverId: row.boarding_requested_by_driver_id,
+        boardingApprovedAt: row.boarding_approved_at,
+        boardingDeclinedAt: row.boarding_declined_at,
+        boardingDeclineReason: row.boarding_decline_reason,
+        boardingVerifiedAt: row.boarding_verified_at,
+        boardingVerificationMethod: row.boarding_verification_method,
         seatCount: row.seat_count,
         tokenCost: row.token_cost,
-        pickupPoint: row.pickup_point_id ? pickupPointsById.get(row.pickup_point_id) ?? null : null,
+        pickupPoint: row.pickup_point_id
+          ? {
+              id: row.pickup_point_id,
+              name: pickupPointsById.get(row.pickup_point_id)?.name ?? '',
+              latitude: row.pickup_point_latitude,
+              longitude: row.pickup_point_longitude,
+            }
+          : null,
         rider: ridersById.get(row.rider_id) ?? null,
         createdAt: row.created_at,
       })),
@@ -967,7 +1062,7 @@ export class AdminOpsRepository {
         .select('ride_instance_id, ride_date, departure_time, status, route:routes(name), vehicle:vehicles(registration_number)')
         .gte('ride_date', from)
         .lte('ride_date', to)
-        .in('status', ['scheduled', 'boarding'])
+        .eq('status', 'scheduled')
         .order('ride_date', { ascending: true })
         .order('departure_time', { ascending: true })
         .limit(20),
@@ -976,7 +1071,7 @@ export class AdminOpsRepository {
         .from('ride_instance_availability')
         .select('ride_instance_id, available_seats, route:routes(name), departure_time')
         .lt('available_seats', 4)
-        .in('status', ['scheduled', 'boarding'])
+        .eq('status', 'scheduled')
         .order('available_seats', { ascending: true })
         .limit(10),
     ]);
@@ -987,8 +1082,8 @@ export class AdminOpsRepository {
 
     const rides = (ridesRes.data ?? []) as Array<{ status: string }>;
     const totalRides = ridesRes.count ?? rides.length;
-    const activeRides = rides.filter((row) => ['scheduled', 'boarding', 'departed'].includes(row.status)).length;
-    const completedRides = rides.filter((row) => row.status === 'completed').length;
+    const activeRides = rides.filter((row) => row.status === 'scheduled').length;
+    const completedRides = 0;
     const totalBookings = bookingsRes.count ?? 0;
     const totalTokensSold = ((purchasesRes.data ?? []) as Array<{ tokens: number }>).reduce((sum, row) => sum + (row.tokens ?? 0), 0);
     const totalWalletBalance = ((walletsRes.data ?? []) as Array<{ balance: number }>).reduce((sum, row) => sum + (row.balance ?? 0), 0);

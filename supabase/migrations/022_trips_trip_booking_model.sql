@@ -242,7 +242,7 @@
     join public.ride_instances ri on ri.id = t.ride_instance_id
     left join public.vehicles v on v.id = t.vehicle_id
     where t.id = p_trip_id
-    for update;
+    for update of t;
 
     if v_ride_instance_id is null then
       raise exception 'TRIP_NOT_FOUND';
@@ -449,7 +449,7 @@
     from public.trips t
     left join public.vehicles v on v.id = t.vehicle_id
     where t.id = p_trip_id
-    for update;
+    for update of t;
 
     if v_ride_instance_id is null then
       raise exception 'TRIP_NOT_FOUND';

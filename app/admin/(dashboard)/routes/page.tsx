@@ -24,7 +24,7 @@ interface RouteItem {
   toLatitude: number;
   toLongitude: number;
   baseTokenCost: number;
-  status: 'active' | 'inactive';
+  status: 'available' | 'coming_soon';
   pickupPointsCount?: number;
   updatedAt: string;
   matchedPickupPoints?: Array<{ id: string; name: string }>;
@@ -44,14 +44,14 @@ const EMPTY_FORM: RouteFormValues = {
   toLatitude: '',
   toLongitude: '',
   baseTokenCost: '',
-  status: 'active',
+  status: 'available',
 };
 
 export default function RoutesPage(): ReactElement {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'coming_soon'>('all');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
@@ -166,7 +166,7 @@ export default function RoutesPage(): ReactElement {
         if (isReferencedConflict) {
           const fallback = await apiRequest<RouteItem>(`/api/admin/routes/${routeId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: 'inactive' }),
+            body: JSON.stringify({ status: 'coming_soon' }),
           });
 
           if (fallback.hasError) {
@@ -186,7 +186,7 @@ export default function RoutesPage(): ReactElement {
   });
 
   const toggleStatusMutation = useMutation({
-    mutationFn: async (input: { routeId: string; status: 'active' | 'inactive' }): Promise<void> => {
+    mutationFn: async (input: { routeId: string; status: 'available' | 'coming_soon' }): Promise<void> => {
       const response = await apiRequest<RouteItem>(`/api/admin/routes/${input.routeId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: input.status }),
@@ -255,12 +255,12 @@ export default function RoutesPage(): ReactElement {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'available' | 'coming_soon')}
             className="rounded-lg border border-input bg-background px-3 py-2.5"
           >
             <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="available">Available</option>
+            <option value="coming_soon">Coming Soon</option>
           </select>
         </div>
       </section>
@@ -310,8 +310,8 @@ export default function RoutesPage(): ReactElement {
                     <td className="px-3 py-3">{item.toName}</td>
                     <td className="px-3 py-3">{item.baseTokenCost}</td>
                     <td className="px-3 py-3">
-                      <span className={`rounded-full px-2 py-1 text-xs ${item.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {item.status}
+                      <span className={`rounded-full px-2 py-1 text-xs ${item.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {item.status === 'available' ? 'Available' : 'Coming Soon'}
                       </span>
                     </td>
                     <td className="px-3 py-3">{item.pickupPointsCount ?? 0}</td>
@@ -332,7 +332,7 @@ export default function RoutesPage(): ReactElement {
                             try {
                               await toggleStatusMutation.mutateAsync({
                                 routeId: item.id,
-                                status: item.status === 'active' ? 'inactive' : 'active',
+                                status: item.status === 'available' ? 'coming_soon' : 'available',
                               });
                             } finally {
                               setPendingRouteAction((current) =>
@@ -344,9 +344,9 @@ export default function RoutesPage(): ReactElement {
                         >
                           {rowBusy && pendingRouteAction?.action === 'toggle'
                             ? 'Updating...'
-                            : item.status === 'active'
-                              ? 'Deactivate'
-                              : 'Activate'}
+                            : item.status === 'available'
+                              ? 'Mark Coming Soon'
+                              : 'Mark Available'}
                         </Button>
                         <Button
                           variant="destructive"

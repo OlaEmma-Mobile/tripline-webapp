@@ -21,7 +21,7 @@ export interface RouteFormValues {
   toLatitude: string;
   toLongitude: string;
   baseTokenCost: string;
-  status: 'active' | 'inactive';
+  status: 'available' | 'coming_soon';
 }
 
 interface RouteFormModalProps {
@@ -85,9 +85,9 @@ export default function RouteFormModal({
           </Field>
 
           <Field label="Status" error={errorText('status')}>
-            <select className="w-full rounded-lg border border-input bg-background px-3 py-2" value={values.status} onChange={(e) => setField('status', e.target.value as 'active' | 'inactive')}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+            <select className="w-full rounded-lg border border-input bg-background px-3 py-2" value={values.status} onChange={(e) => setField('status', e.target.value as 'available' | 'coming_soon')}>
+              <option value="available">Available</option>
+              <option value="coming_soon">Coming Soon</option>
             </select>
           </Field>
 

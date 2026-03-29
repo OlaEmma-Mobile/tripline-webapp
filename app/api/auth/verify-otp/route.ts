@@ -19,10 +19,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = verifyOtpSchema.parse(rawBody) as VerifyOtpPayload;
     logStep('validated verify-otp payload');
     const result = await authService.verifyOtp(body);
-    const message = result.purpose === 'reset_password' ? 'OTP verified' : 'Email verified';
-    const description = result.purpose === 'reset_password'
-      ? 'Use verify token to reset password'
-      : 'Account verified successfully';
+    const message = result.purpose === 'verify_email' ? 'Email verified' : 'OTP verified';
+    const description =
+      result.purpose === 'reset_password'
+        ? 'Use verify token to reset password'
+        : result.purpose === 'reset_ride_passcode'
+          ? 'Use verify token to reset ride passcode'
+          : 'Account verified successfully';
     logOutgoing(200, result);
     return jsonResponse(result, message, description);
   } catch (error) {

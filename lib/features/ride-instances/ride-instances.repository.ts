@@ -17,7 +17,6 @@ function toInsert(input: CreateRideInstanceInput): Record<string, unknown> {
   return {
     route_id: input.routeId,
     ride_date: input.rideDate,
-    departure_time: input.departureTime,
     time_slot: input.timeSlot,
     status: input.status ?? 'scheduled',
   };
@@ -31,7 +30,6 @@ function toUpdate(input: UpdateRideInstanceInput): Record<string, unknown> {
   if (input.routeId !== undefined) out.route_id = input.routeId;
   if (input.vehicleId !== undefined) out.vehicle_id = input.vehicleId;
   if (input.rideDate !== undefined) out.ride_date = input.rideDate;
-  if (input.departureTime !== undefined) out.departure_time = input.departureTime;
   if (input.timeSlot !== undefined) out.time_slot = input.timeSlot;
   if (input.status !== undefined) out.status = input.status;
   return out;
@@ -39,7 +37,7 @@ function toUpdate(input: UpdateRideInstanceInput): Record<string, unknown> {
 
 interface RouteStatusRecord {
   id: string;
-  status: 'active' | 'inactive';
+  status: 'available' | 'coming_soon' | 'active' | 'inactive';
 }
 
 interface VehicleStatusRecord {
@@ -157,7 +155,6 @@ export class RideInstancesRepository {
         message: error?.message ?? 'no message',
         routeId: input.routeId,
         rideDate: input.rideDate,
-        departureTime: input.departureTime,
         timeSlot: input.timeSlot,
       });
       throw new AppError('Unable to create ride instance', 500);
@@ -167,7 +164,7 @@ export class RideInstancesRepository {
 
   /**
    * Create multiple ride instances for one date.
-   * @param inputs Batch create payloads (one per departure time).
+   * @param inputs Batch create payloads.
    * @returns Created ride instance rows.
    */
   async createBulk(inputs: CreateRideInstanceInput[]): Promise<RideInstanceRecord[]> {

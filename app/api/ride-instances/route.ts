@@ -28,7 +28,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     const data = await rideInstancesService.list({
       ...query,
-      statuses: query.status ? undefined : ['scheduled', 'boarding'],
+      statuses: query.status ? undefined : ['scheduled'],
     });
     logOutgoing(200, data);
     return jsonResponse(data, 'Ride instances fetched', 'Ride availability retrieved');

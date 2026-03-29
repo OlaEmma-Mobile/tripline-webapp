@@ -10,7 +10,7 @@ import { logIncoming, logOutgoing, logStep } from '@/lib/utils/logger';
 
 /**
  * PATCH /api/bookings/:id/board
- * Updates boarding outcome for a booking assigned to the authenticated driver.
+ * Updates no-show outcome for a booking assigned to the authenticated driver.
  * Access: driver.
  */
 export async function PATCH(
@@ -37,7 +37,7 @@ export async function PATCH(
     );
 
     logOutgoing(200, data);
-    return jsonResponse(data, 'Booking updated', 'Boarding status updated successfully');
+    return jsonResponse(data, 'Booking updated', 'No-show status updated successfully');
   } catch (error) {
     if (error instanceof ZodError) {
       const errors = zodErrorToFieldErrors(error);
@@ -59,13 +59,13 @@ export async function PATCH(
             : error.status === 422
               ? 'NO_SHOW can only be marked after departure grace period'
               : error.status === 409
-                ? 'Booking is not valid for boarding update'
+                ? 'Booking is not valid for no-show update'
               : error.status === 401
                 ? error.message === 'Unauthorized'
                   ? 'Authorization token is required'
                   : 'Invalid or expired token'
                 : error.status === 400
-                  ? 'Action/status must be BOARDED or NO_SHOW'
+                  ? 'Action/status must be NO_SHOW'
                   : 'Unable to update booking status';
       logOutgoing(error.status, { error: error.message });
       return errorResponse(error.message, description, error.status);

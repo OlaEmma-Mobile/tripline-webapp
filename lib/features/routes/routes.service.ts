@@ -8,6 +8,13 @@ import type { RouteCreateInput, RouteDTO, RouteFilters, RouteRecord, RouteUpdate
  * mapRoute Pure helper that transforms data between transport, domain, and persistence shapes.
  */
 function mapRoute(record: RouteRecord): RouteDTO {
+  const normalizedStatus =
+    record.status === 'active'
+      ? 'available'
+      : record.status === 'inactive'
+        ? 'coming_soon'
+        : record.status;
+
   return {
     id: record.id,
     name: record.name,
@@ -19,7 +26,7 @@ function mapRoute(record: RouteRecord): RouteDTO {
     toLatitude: record.to_latitude,
     toLongitude: record.to_longitude,
     baseTokenCost: record.base_token_cost,
-    status: record.status,
+    status: normalizedStatus,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -114,7 +121,7 @@ export class RoutesService {
    */
   async searchRoutes(params: {
     q: string;
-    status?: 'active' | 'inactive';
+    status?: 'available' | 'coming_soon';
     companyId?: string;
     limit: number;
   }): Promise<{ items: Array<RouteDTO & { matchedPickupPoints: PickupPointDTO[] }>; total: number }> {

@@ -3,6 +3,7 @@ import { AppError } from '@/lib/utils/errors';
 import { buildOtpEmail } from '@/lib/mail/templates';
 import { sendMail } from '@/lib/mail/mailer';
 import { hashPassword, verifyPassword } from '@/lib/security/password';
+import { hashRidePasscode } from '@/lib/security/passcode';
 import { generateOtp, hashOtp, verifyOtpHash } from '@/lib/security/otp';
 import {
   signAccessToken,
@@ -14,6 +15,7 @@ import {
 } from '@/lib/security/jwt';
 import { hashToken } from '@/lib/security/token';
 import { authRepository, AuthRepository } from './auth.repository';
+import { usersRepository } from '@/lib/features/users/users.repository';
 import { walletRepository } from '@/lib/features/wallet/wallet.repository';
 import { logStep } from '@/lib/utils/logger';
 
@@ -139,6 +141,7 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     email_verified: boolean;
+    has_ride_passcode: boolean;
     account_status: string;
     driver_kyc_status: string | null;
   }> {
@@ -164,6 +167,7 @@ export class AuthService {
       accessToken,
       refreshToken,
       email_verified: Boolean(user.email_verified_at),
+      has_ride_passcode: Boolean(user.ride_passcode_hash),
       account_status: user.status,
       driver_kyc_status: user.role === 'driver' ? user.kyc?.status ?? 'pending' : null,
     };
@@ -312,6 +316,29 @@ export class AuthService {
     return { success: true, verifyToken };
   }
 
+  /** Start forgot ride passcode flow by sending reset OTP. */
+  async forgotRidePasscode(email: string): Promise<{ success: boolean; verifyToken: string }> {
+    logStep('loading user for forgot ride passcode');
+    const user = await this.repo.findUserByEmail(email);
+    if (!user) {
+      throw new AppError('Account not found', 404);
+    }
+    if (user.role !== 'rider') {
+      throw new AppError('Only riders can reset ride passcode', 403);
+    }
+    if (!user.email_verified_at) {
+      throw new AppError('Email must be verified before resetting ride passcode', 409);
+    }
+
+    const { verifyToken } = await this.issueOtp({
+      userId: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      purpose: 'reset_ride_passcode',
+    });
+    return { success: true, verifyToken };
+  }
+
   /** Reset password after OTP verification and verify token. */
   async resetPassword({
     newPassword,
@@ -332,6 +359,29 @@ export class AuthService {
     const passwordHash = await hashPassword(newPassword);
     await this.repo.updatePassword(user.id, passwordHash);
 
+    return { success: true };
+  }
+
+  /** Reset rider ride passcode after OTP verification. */
+  async resetRidePasscode({
+    newPasscode,
+    verifyToken,
+  }: {
+    newPasscode: string;
+    verifyToken: string;
+  }): Promise<{ success: boolean }> {
+    logStep('verifying ride passcode reset token');
+    const payload = verifyResetToken(verifyToken);
+    const user = await usersRepository.getById(payload.sub);
+    if (!user || user.email !== payload.email) {
+      throw new AppError('Invalid reset verification token', 401);
+    }
+    if (user.role !== 'rider') {
+      throw new AppError('Only riders can reset ride passcode', 403);
+    }
+
+    const passcodeHash = await hashRidePasscode(newPasscode);
+    await this.repo.updateRidePasscode(user.id, passcodeHash);
     return { success: true };
   }
 
@@ -409,7 +459,7 @@ function verifyOtpToken(token: string): { sub: string; email: string; purpose: O
     if (payload.type !== 'otp' || !payload.purpose) {
       throw new AppError('Invalid verification token', 401);
     }
-    const allowed: OtpPurpose[] = ['verify_email', 'reset_password'];
+    const allowed: OtpPurpose[] = ['verify_email', 'reset_password', 'reset_ride_passcode'];
     if (!allowed.includes(payload.purpose as OtpPurpose)) {
       throw new AppError('Invalid verification token', 401);
     }

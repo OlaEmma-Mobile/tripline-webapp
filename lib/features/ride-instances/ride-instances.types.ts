@@ -1,8 +1,7 @@
+import type { TripStatus } from '@/lib/features/trips/trips.types';
+
 export type RideInstanceStatus =
   | 'scheduled'
-  | 'boarding'
-  | 'departed'
-  | 'completed'
   | 'cancelled';
 
 export type RideTimeSlot = 'morning' | 'afternoon' | 'evening';
@@ -21,8 +20,8 @@ export interface RideInstanceRecord {
   vehicle_id: string | null;
   /** Service date in YYYY-MM-DD. */
   ride_date: string;
-  /** Departure time in HH:MM[:SS]. */
-  departure_time: string;
+  /** Optional legacy template departure time. */
+  departure_time: string | null;
   /** Time slot for assignment constraints. */
   time_slot: RideTimeSlot;
   /** Operational state of this departure. */
@@ -79,8 +78,8 @@ export interface RideInstanceDTO {
   vehicleId: string | null;
   /** Service date in YYYY-MM-DD. */
   rideDate: string;
-  /** Departure time in HH:MM[:SS]. */
-  departureTime: string;
+  /** Optional legacy template departure time. */
+  departureTime?: string | null;
   /** Time slot for assignment constraints. */
   timeSlot: RideTimeSlot;
   /** Operational state of this departure. */
@@ -109,11 +108,13 @@ export interface RideInstanceDTO {
   trips?: Array<{
     id: string;
     tripId: string;
-    driverTripId: string;
-    driverId: string;
-    vehicleId: string;
-    status: RideInstanceStatus;
-    capacity: number;
+    driverTripId: string | null;
+    driverId: string | null;
+      vehicleId: string | null;
+      departureTime: string;
+      estimatedDurationMinutes: number;
+      status: TripStatus;
+      capacity: number;
     reservedSeats: number;
     availableSeats: number;
   }>;
@@ -147,8 +148,6 @@ export interface CreateRideInstanceInput {
   routeId: string;
   /** Service date (YYYY-MM-DD). */
   rideDate: string;
-  /** Departure time (HH:MM[:SS]). */
-  departureTime: string;
   /** Time slot (morning/afternoon/evening). */
   timeSlot: RideTimeSlot;
   /** Optional initial status. */
@@ -163,11 +162,20 @@ export interface CreateRideInstancesBulkInput {
   routeId: string;
   /** Service date (YYYY-MM-DD). */
   rideDate: string;
-  /** Departure times for separate ride instance rows. */
-  departureTimes: string[];
   /** Time slot (morning/afternoon/evening). */
   timeSlot: RideTimeSlot;
   /** Optional initial status for all created rows. */
+  status?: RideInstanceStatus;
+}
+
+export interface CreateRideInstancesForSlotsInput {
+  /** Route id. */
+  routeId: string;
+  /** Service date (YYYY-MM-DD). */
+  rideDate: string;
+  /** One or more time slots to create. */
+  timeSlots: RideTimeSlot[];
+  /** Optional initial status. */
   status?: RideInstanceStatus;
 }
 
@@ -181,8 +189,6 @@ export interface UpdateRideInstanceInput {
   vehicleId?: string | null;
   /** Optional date update (YYYY-MM-DD). */
   rideDate?: string;
-  /** Optional departure time update (HH:MM[:SS]). */
-  departureTime?: string;
   /** Optional time slot update. */
   timeSlot?: RideTimeSlot;
   /** Optional status update. */
@@ -203,7 +209,7 @@ export interface RideInstanceDetailRecord {
   route_id: string;
   vehicle_id: string | null;
   ride_date: string;
-  departure_time: string;
+  departure_time: string | null;
   time_slot: RideTimeSlot;
   status: RideInstanceStatus;
   route: {
@@ -243,7 +249,6 @@ export interface RiderRideInstanceDetailDTO {
   id: string;
   rideId: string;
   rideDate: string;
-  departureTime: string;
   timeSlot: RideTimeSlot;
   status: RideInstanceStatus;
   route: RideInstanceDetailRecord['route'];
@@ -255,10 +260,12 @@ export interface RiderRideInstanceDetailDTO {
   trips: Array<{
     id: string;
     tripId: string;
-    driverTripId: string;
-    driverId: string;
-    vehicleId: string;
-    status: RideInstanceStatus;
+    driverTripId: string | null;
+    driverId: string | null;
+    vehicleId: string | null;
+    departureTime: string;
+    estimatedDurationMinutes: number;
+    status: TripStatus;
     capacity: number;
     reservedSeats: number;
     availableSeats: number;

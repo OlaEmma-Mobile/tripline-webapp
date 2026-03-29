@@ -49,6 +49,31 @@ function toUpdate(input: UpdateDriverInput): Record<string, unknown> {
  * Driver persistence over users table.
  */
 export class DriversRepository {
+  private isTripTimingSchemaMismatch(error: { message?: string; details?: string; hint?: string; code?: string } | null): boolean {
+    if (!error) return false;
+    const text = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+    return (
+      error.code === '42703' ||
+      text.includes('departure_time') ||
+      text.includes('estimated_duration_minutes')
+    );
+  }
+
+  private isMissingBoardingVerificationSchema(
+    error: { message?: string; details?: string; hint?: string; code?: string } | null
+  ): boolean {
+    if (!error) return false;
+    const text = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+    return (
+      error.code === '42703' ||
+      text.includes('pickup_point_latitude') ||
+      text.includes('pickup_point_longitude') ||
+      text.includes('boarding_status') ||
+      text.includes('boarding_expires_at') ||
+      text.includes('boarding_verification_method')
+    );
+  }
+
   /**
    * Finds actively assigned driver ids for a specific ride date and slot.
    */
@@ -334,11 +359,11 @@ export class DriversRepository {
     const { data, error } = await supabaseAdmin
       .from('trip_availability')
       .select(
-        'id, trip_id, ride_instance_id, driver_trip_id, ride_id, ride_date, departure_time, time_slot, status, capacity, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude), vehicle:vehicles(registration_number)'
+        'id, trip_id, ride_instance_id, driver_trip_id, ride_id, ride_date, departure_time, estimated_duration_minutes, time_slot, status, capacity, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude), vehicle:vehicles(registration_number)'
       )
       .eq('driver_id', driverId)
       .eq('ride_date', date)
-      .in('status', ['scheduled', 'boarding'])
+      .in('status', ['scheduled', 'ongoing'])
       .order('departure_time', { ascending: true })
       .returns<DriverManifestRideRow[]>();
 
@@ -401,47 +426,45 @@ export class DriversRepository {
       return null;
     }
 
-    const { data: trip, error: tripError } = await supabaseAdmin
-      .from('trip_availability')
+    let { data: trip, error: tripError } = await supabaseAdmin
+      .from('trips')
       .select(
-        'id, trip_id, ride_instance_id, driver_trip_id, ride_id, ride_date, departure_time, time_slot, status, capacity, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude), vehicle:vehicles(registration_number)'
+        'id, trip_id, driver_trip_id, ride_instance_id, driver_id, vehicle_id, departure_time, estimated_duration_minutes, status, ride_instance:ride_instances(ride_id, ride_date, time_slot, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude)), vehicle:vehicles(registration_number, capacity)'
       )
-      .eq('driver_id', driverId)
       .eq('ride_instance_id', rideInstanceId)
-      .maybeSingle<{
-        id: string;
-        trip_id: string;
-        ride_instance_id: string;
-        driver_trip_id: string;
-        ride_id: string;
-        ride_date: string;
-        departure_time: string;
-        time_slot: string;
-        status: string;
-        capacity: number;
-        route: {
-          name: string;
-          from_name: string;
-          to_name: string;
-          from_latitude: number;
-          from_longitude: number;
-          to_latitude: number;
-          to_longitude: number;
-        } | null;
-        vehicle: { registration_number: string } | null;
-      }>();
+      .eq('driver_id', driverId)
+      .maybeSingle<any>();
+
+    if (this.isTripTimingSchemaMismatch(tripError)) {
+      const fallback = await supabaseAdmin
+        .from('trips')
+        .select(
+          'id, trip_id, driver_trip_id, ride_instance_id, driver_id, vehicle_id, status, ride_instance:ride_instances(ride_id, ride_date, departure_time, time_slot, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude)), vehicle:vehicles(registration_number, capacity)'
+        )
+        .eq('ride_instance_id', rideInstanceId)
+        .eq('driver_id', driverId)
+        .maybeSingle<any>();
+      trip = fallback.data
+        ? {
+            ...fallback.data,
+            departure_time: fallback.data.ride_instance?.departure_time ?? '06:30:00',
+            estimated_duration_minutes: 60,
+          }
+        : null;
+      tripError = fallback.error;
+    }
 
     if (tripError) {
       throw new AppError('Unable to fetch driver manifest details', 500);
     }
-    if (!trip || !trip.route) {
+    if (!trip || !trip.ride_instance?.route) {
       return null;
     }
 
-    const { data: bookings, error: bookingsError } = await supabaseAdmin
+    let { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, rider_id, status, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
       )
       .eq('trip_id', trip.id)
       .order('created_at', { ascending: true })
@@ -450,10 +473,43 @@ export class DriversRepository {
           id: string;
           rider_id: string;
           status: string;
+          pickup_point_latitude: number | null;
+          pickup_point_longitude: number | null;
+          boarding_status: string;
+          boarding_expires_at: string | null;
+          boarding_verification_method: string | null;
           pickup_point: { id: string; name: string } | null;
           rider: { first_name: string; last_name: string } | null;
         }>
       >();
+
+    if (this.isMissingBoardingVerificationSchema(bookingsError)) {
+      const fallback = await supabaseAdmin
+        .from('bookings')
+        .select(
+          'id, rider_id, status, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+        )
+        .eq('trip_id', trip.id)
+        .order('created_at', { ascending: true })
+        .returns<
+          Array<{
+            id: string;
+            rider_id: string;
+            status: string;
+            pickup_point: { id: string; name: string } | null;
+            rider: { first_name: string; last_name: string } | null;
+          }>
+        >();
+      bookings = (fallback.data ?? []).map((booking) => ({
+        ...booking,
+        pickup_point_latitude: null,
+        pickup_point_longitude: null,
+        boarding_status: 'none',
+        boarding_expires_at: null,
+        boarding_verification_method: null,
+      }));
+      bookingsError = fallback.error;
+    }
 
     if (bookingsError) {
       throw new AppError('Unable to fetch ride passengers', 500);
@@ -465,21 +521,22 @@ export class DriversRepository {
         tripId: trip.trip_id,
         driverTripId: assignment.driver_trip_id,
         rideInstanceId: trip.ride_instance_id,
-        rideId: trip.ride_id,
-        rideDate: trip.ride_date,
+        rideId: trip.ride_instance.ride_id,
+        rideDate: trip.ride_instance.ride_date,
         departureTime: trip.departure_time,
-        timeSlot: trip.time_slot,
+        estimatedDurationMinutes: trip.estimated_duration_minutes,
+        timeSlot: trip.ride_instance.time_slot,
         status: trip.status,
         vehiclePlate: trip.vehicle?.registration_number ?? 'Unknown vehicle',
-        capacity: trip.capacity,
+        capacity: trip.vehicle?.capacity ?? 0,
         route: {
-          name: trip.route.name,
-          fromName: trip.route.from_name,
-          toName: trip.route.to_name,
-          fromLat: trip.route.from_latitude,
-          fromLng: trip.route.from_longitude,
-          toLat: trip.route.to_latitude,
-          toLng: trip.route.to_longitude,
+          name: trip.ride_instance.route.name,
+          fromName: trip.ride_instance.route.from_name,
+          toName: trip.ride_instance.route.to_name,
+          fromLat: trip.ride_instance.route.from_latitude,
+          fromLng: trip.ride_instance.route.from_longitude,
+          toLat: trip.ride_instance.route.to_latitude,
+          toLng: trip.ride_instance.route.to_longitude,
         },
       },
       passengers: (bookings ?? []).map((booking) => ({
@@ -488,7 +545,148 @@ export class DriversRepository {
         userName: `${booking.rider?.first_name ?? ''} ${booking.rider?.last_name ?? ''}`.trim(),
         pickupPointId: booking.pickup_point?.id ?? null,
         pickupPointName: booking.pickup_point?.name ?? null,
+        pickupPointLatitude: booking.pickup_point_latitude,
+        pickupPointLongitude: booking.pickup_point_longitude,
         bookingStatus: booking.status,
+        boardingStatus: booking.boarding_status,
+        boardingExpiresAt: booking.boarding_expires_at,
+        boardingVerificationMethod: booking.boarding_verification_method,
+      })),
+    };
+  }
+
+  /**
+   * Fetch full manifest details for a single trip belonging to a driver.
+   */
+  async getManifestDetailsByTrip(
+    driverId: string,
+    tripId: string
+  ): Promise<DriverManifestDetailDTO | null> {
+    let { data: trip, error: tripError } = await supabaseAdmin
+      .from('trips')
+      .select(
+        'id, trip_id, driver_trip_id, ride_instance_id, driver_id, vehicle_id, departure_time, estimated_duration_minutes, status, ride_instance:ride_instances(ride_id, ride_date, time_slot, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude)), vehicle:vehicles(registration_number, capacity)'
+      )
+      .eq('id', tripId)
+      .eq('driver_id', driverId)
+      .maybeSingle<any>();
+
+    if (this.isTripTimingSchemaMismatch(tripError)) {
+      const fallback = await supabaseAdmin
+        .from('trips')
+        .select(
+          'id, trip_id, driver_trip_id, ride_instance_id, driver_id, vehicle_id, status, ride_instance:ride_instances(ride_id, ride_date, departure_time, time_slot, route:routes(name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude)), vehicle:vehicles(registration_number, capacity)'
+        )
+        .eq('id', tripId)
+        .eq('driver_id', driverId)
+        .maybeSingle<any>();
+      trip = fallback.data
+        ? {
+            ...fallback.data,
+            departure_time: fallback.data.ride_instance?.departure_time ?? '06:30:00',
+            estimated_duration_minutes: 60,
+          }
+        : null;
+      tripError = fallback.error;
+    }
+
+    if (tripError) {
+      throw new AppError('Unable to fetch driver manifest details', 500);
+    }
+    if (!trip || !trip.ride_instance?.route) {
+      return null;
+    }
+
+    let { data: bookings, error: bookingsError } = await supabaseAdmin
+      .from('bookings')
+      .select(
+        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+      )
+      .eq('trip_id', trip.id)
+      .order('created_at', { ascending: true })
+      .returns<
+        Array<{
+          id: string;
+          rider_id: string;
+          status: string;
+          pickup_point_latitude: number | null;
+          pickup_point_longitude: number | null;
+          boarding_status: string;
+          boarding_expires_at: string | null;
+          boarding_verification_method: string | null;
+          pickup_point: { id: string; name: string } | null;
+          rider: { first_name: string; last_name: string } | null;
+        }>
+      >();
+
+    if (this.isMissingBoardingVerificationSchema(bookingsError)) {
+      const fallback = await supabaseAdmin
+        .from('bookings')
+        .select(
+          'id, rider_id, status, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+        )
+        .eq('trip_id', trip.id)
+        .order('created_at', { ascending: true })
+        .returns<
+          Array<{
+            id: string;
+            rider_id: string;
+            status: string;
+            pickup_point: { id: string; name: string } | null;
+            rider: { first_name: string; last_name: string } | null;
+          }>
+        >();
+      bookings = (fallback.data ?? []).map((booking) => ({
+        ...booking,
+        pickup_point_latitude: null,
+        pickup_point_longitude: null,
+        boarding_status: 'none',
+        boarding_expires_at: null,
+        boarding_verification_method: null,
+      }));
+      bookingsError = fallback.error;
+    }
+
+    if (bookingsError) {
+      throw new AppError('Unable to fetch ride passengers', 500);
+    }
+
+    return {
+      trip: {
+        id: trip.id,
+        tripId: trip.trip_id,
+        driverTripId: trip.driver_trip_id,
+        rideInstanceId: trip.ride_instance_id,
+        rideId: trip.ride_instance.ride_id,
+        rideDate: trip.ride_instance.ride_date,
+        departureTime: trip.departure_time,
+        estimatedDurationMinutes: trip.estimated_duration_minutes,
+        timeSlot: trip.ride_instance.time_slot,
+        status: trip.status,
+        vehiclePlate: trip.vehicle?.registration_number ?? 'Unknown vehicle',
+        capacity: trip.vehicle?.capacity ?? 0,
+        route: {
+          name: trip.ride_instance.route.name,
+          fromName: trip.ride_instance.route.from_name,
+          toName: trip.ride_instance.route.to_name,
+          fromLat: trip.ride_instance.route.from_latitude,
+          fromLng: trip.ride_instance.route.from_longitude,
+          toLat: trip.ride_instance.route.to_latitude,
+          toLng: trip.ride_instance.route.to_longitude,
+        },
+      },
+      passengers: (bookings ?? []).map((booking) => ({
+        bookingId: booking.id,
+        userId: booking.rider_id,
+        userName: `${booking.rider?.first_name ?? ''} ${booking.rider?.last_name ?? ''}`.trim(),
+        pickupPointId: booking.pickup_point?.id ?? null,
+        pickupPointName: booking.pickup_point?.name ?? null,
+        pickupPointLatitude: booking.pickup_point_latitude,
+        pickupPointLongitude: booking.pickup_point_longitude,
+        bookingStatus: booking.status,
+        boardingStatus: booking.boarding_status,
+        boardingExpiresAt: booking.boarding_expires_at,
+        boardingVerificationMethod: booking.boarding_verification_method,
       })),
     };
   }

@@ -7,19 +7,73 @@ import type { UserProfileRecord } from './users.types';
  * Users read-model repository.
  */
 export class UsersRepository {
+  private isRidePasscodeSchemaMissing(error: { message?: string; details?: string; hint?: string; code?: string } | null): boolean {
+    const text = `${error?.message ?? ''} ${error?.details ?? ''} ${error?.hint ?? ''}`.toLowerCase();
+    return (
+      text.includes('ride_passcode_hash') ||
+      text.includes('ride_passcode_set_at') ||
+      text.includes('ride_passcode_updated_at') ||
+      error?.code === '42703'
+    );
+  }
+
   /** Find user profile by id. */
   async getById(userId: string): Promise<UserProfileRecord | null> {
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('id, first_name, last_name, email, phone, role, email_verified_at, status, created_at, updated_at')
+      .select('id, first_name, last_name, email, phone, role, email_verified_at, status, ride_passcode_hash, ride_passcode_set_at, ride_passcode_updated_at, created_at, updated_at')
       .eq('id', userId)
       .maybeSingle<UserProfileRecord>();
+
+    if (error && this.isRidePasscodeSchemaMissing(error)) {
+      const fallback = await supabaseAdmin
+        .from('users')
+        .select('id, first_name, last_name, email, phone, role, email_verified_at, status, created_at, updated_at')
+        .eq('id', userId)
+        .maybeSingle<
+          Omit<UserProfileRecord, 'ride_passcode_hash' | 'ride_passcode_set_at' | 'ride_passcode_updated_at'>
+        >();
+
+      if (fallback.error) {
+        throw new AppError('Unable to fetch user profile', 500);
+      }
+
+      return fallback.data
+        ? {
+            ...fallback.data,
+            ride_passcode_hash: null,
+            ride_passcode_set_at: null,
+            ride_passcode_updated_at: null,
+          }
+        : null;
+    }
 
     if (error) {
       throw new AppError('Unable to fetch user profile', 500);
     }
 
     return data ?? null;
+  }
+
+  /** Persist a hashed rider passcode. */
+  async updateRidePasscode(userId: string, passcodeHash: string): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from('users')
+      .update({
+        ride_passcode_hash: passcodeHash,
+        ride_passcode_set_at: now,
+        ride_passcode_updated_at: now,
+      })
+      .eq('id', userId);
+
+    if (error && this.isRidePasscodeSchemaMissing(error)) {
+      throw new AppError('Ride passcode schema not migrated', 409);
+    }
+
+    if (error) {
+      throw new AppError('Unable to save ride passcode', 500);
+    }
   }
 
   /** Get driver KYC status by user id, if present. */

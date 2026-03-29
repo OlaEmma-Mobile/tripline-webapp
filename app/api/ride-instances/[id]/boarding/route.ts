@@ -9,7 +9,7 @@ import { zodErrorToFieldErrors } from '@/lib/utils/validation';
 
 /**
  * PATCH /api/ride-instances/:id/boarding
- * Batch update passenger boarding statuses for a ride instance.
+ * Batch update passenger no-show statuses for a ride instance.
  * Access: driver only.
  */
 export async function PATCH(
@@ -38,7 +38,7 @@ export async function PATCH(
     return jsonResponse(
       { rideInstanceId: id, updated: data },
       'Boarding updated',
-      'Passenger boarding statuses updated successfully'
+      'Passenger no-show statuses updated successfully'
     );
   } catch (error) {
     if (error instanceof ZodError) {
@@ -60,10 +60,10 @@ export async function PATCH(
               ? 'Booking does not belong to this ride instance'
               : error.status === 422
                 ? 'NO_SHOW cannot be marked before departure grace period'
-                : 'Unable to update boarding statuses';
+                : 'Unable to update no-show statuses';
       return errorResponse(error.message, description, error.status);
     }
 
-    return errorResponse('Unable to update boarding statuses', 'Unexpected server error', 500);
+    return errorResponse('Unable to update no-show statuses', 'Unexpected server error', 500);
   }
 }

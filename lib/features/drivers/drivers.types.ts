@@ -72,7 +72,12 @@ export interface DriverManifestPassengerDTO {
   userName: string;
   pickupPointId: string | null;
   pickupPointName?: string | null;
+  pickupPointLatitude: number | null;
+  pickupPointLongitude: number | null;
   bookingStatus: string;
+  boardingStatus: string;
+  boardingExpiresAt: string | null;
+  boardingVerificationMethod: string | null;
 }
 
 export interface DriverManifestTripDTO {
@@ -83,6 +88,7 @@ export interface DriverManifestTripDTO {
   rideId: string;
   rideDate: string;
   departureTime: string;
+  estimatedDurationMinutes: number;
   timeSlot: string;
   status: string;
   vehiclePlate: string;
@@ -109,6 +115,11 @@ export interface DriverManifestBookingRow {
   id: string;
   rider_id: string;
   status: string;
+  pickup_point_latitude: number | null;
+  pickup_point_longitude: number | null;
+  boarding_status: string;
+  boarding_expires_at: string | null;
+  boarding_verification_method: string | null;
   pickup_point: { id: string; name: string } | null;
   rider: {
     first_name: string;
@@ -124,6 +135,7 @@ export interface DriverManifestRideRow {
   ride_id: string;
   ride_date: string;
   departure_time: string;
+  estimated_duration_minutes: number;
   time_slot: string;
   status: string;
   capacity: number;
@@ -156,6 +168,7 @@ export interface DriverManifestDetailDTO {
     rideId: string;
     rideDate: string;
     departureTime: string;
+    estimatedDurationMinutes: number;
     timeSlot: string;
     status: string;
     vehiclePlate: string;

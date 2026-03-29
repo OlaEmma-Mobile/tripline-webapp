@@ -9,10 +9,36 @@ import { zodErrorToFieldErrors } from '@/lib/utils/validation';
 const tripsQuerySchema = z.object({
   from: z.string().date().optional(),
   to: z.string().date().optional(),
-  status: z.string().trim().optional(),
+  status: z.enum(['ongoing_rides', 'booked_rides', 'past_rides']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
+
+function isRiderHistoryMatch(
+  filter: 'ongoing_rides' | 'booked_rides' | 'past_rides' | undefined,
+  item: any
+): boolean {
+  if (!filter) return true;
+
+  const tripStatus = String(item.trip?.status ?? '');
+  const bookingStatus = String(item.status ?? '');
+
+  if (filter === 'ongoing_rides') {
+    return tripStatus === 'ongoing' && bookingStatus !== 'cancelled' && bookingStatus !== 'expired';
+  }
+
+  if (filter === 'booked_rides') {
+    return (
+      ['scheduled', 'awaiting_driver'].includes(tripStatus) &&
+      ['pending', 'confirmed', 'booked'].includes(bookingStatus)
+    );
+  }
+
+  return (
+    ['completed', 'cancelled'].includes(tripStatus) ||
+    ['boarded', 'no_show', 'cancelled', 'expired'].includes(bookingStatus)
+  );
+}
 
 /**
  * GET /api/trips/me
@@ -33,14 +59,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       let tripQuery = supabaseAdmin
         .from('trip_availability')
         .select(
-          'id, trip_id, driver_trip_id, ride_instance_id, ride_id, ride_date, departure_time, time_slot, status, capacity, reserved_seats, available_seats, route:routes(name), vehicle:vehicles(registration_number)',
+          'id, trip_id, driver_trip_id, ride_instance_id, ride_id, ride_date, departure_time, estimated_duration_minutes, time_slot, status, capacity, reserved_seats, available_seats, route:routes(id, name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude), vehicle:vehicles(registration_number)',
           { count: 'exact' }
         )
         .eq('driver_id', auth.userId)
         .gte('ride_date', from)
         .lte('ride_date', to);
 
-      if (query.status) tripQuery = tripQuery.eq('status', query.status);
+      if (query.status === 'ongoing_rides') tripQuery = tripQuery.eq('status', 'ongoing');
+      if (query.status === 'booked_rides') tripQuery = tripQuery.in('status', ['scheduled', 'awaiting_driver']);
+      if (query.status === 'past_rides') tripQuery = tripQuery.in('status', ['completed', 'cancelled']);
 
       const fromIdx = (query.page - 1) * query.limit;
       const toIdx = fromIdx + query.limit - 1;
@@ -73,8 +101,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                 rideId: item.ride_id,
                 rideDate: item.ride_date,
                 departureTime: item.departure_time,
+                estimatedDurationMinutes: item.estimated_duration_minutes,
                 timeSlot: item.time_slot,
-                routeName: item.route?.name ?? null,
+                route: item.route
+                  ? {
+                      id: item.route.id,
+                      name: item.route.name,
+                      fromName: item.route.from_name,
+                      toName: item.route.to_name,
+                      fromLat: item.route.from_latitude,
+                      fromLng: item.route.from_longitude,
+                      toLat: item.route.to_latitude,
+                      toLng: item.route.to_longitude,
+                    }
+                  : null,
               },
             })),
         },
@@ -103,34 +143,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      let bookingQuery = supabaseAdmin
+      const bookingQuery = supabaseAdmin
         .from('bookings')
         .select(
-          'id, status, seat_count, token_cost, created_at, trip:trips(id, trip_id, driver_trip_id, status, vehicle_id, ride_instance:ride_instances(id, ride_id, ride_date, departure_time, time_slot, route:routes(name)), vehicle:vehicles(registration_number, capacity))',
+          'id, status, seat_count, token_cost, created_at, trip:trips(id, trip_id, driver_trip_id, departure_time, estimated_duration_minutes, status, vehicle_id, ride_instance:ride_instances(id, ride_id, ride_date, time_slot, route:routes(id, name, from_name, to_name, from_latitude, from_longitude, to_latitude, to_longitude)), vehicle:vehicles(registration_number, capacity))',
           { count: 'exact' }
         )
         .eq('rider_id', auth.userId)
         .in('trip_id', tripIds);
 
-      if (query.status) bookingQuery = bookingQuery.eq('status', query.status);
-
       const fromIdx = (query.page - 1) * query.limit;
       const toIdx = fromIdx + query.limit - 1;
 
-      const { data, error, count } = await bookingQuery
-        .order('created_at', { ascending: false })
-        .range(fromIdx, toIdx);
+      const { data, error } = await bookingQuery.order('created_at', { ascending: false });
 
       if (error) {
         throw new AppError('Unable to fetch trip history', 500);
       }
 
+      const filteredItems = (data ?? []).filter((item: any) =>
+        isRiderHistoryMatch(query.status, item)
+      );
+      const pagedItems = filteredItems.slice(fromIdx, toIdx + 1);
+
       return jsonResponse(
         {
           role: 'rider',
-          total: count ?? 0,
+          total: filteredItems.length,
           items:
-            (data ?? []).map((item: any) => ({
+            pagedItems.map((item: any) => ({
               bookingId: item.id,
               status: item.status,
               seatCount: item.seat_count,
@@ -141,6 +182,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                     id: item.trip.id,
                     tripId: item.trip.trip_id,
                     driverTripId: item.trip.driver_trip_id,
+                    departureTime: item.trip.departure_time,
+                    estimatedDurationMinutes: item.trip.estimated_duration_minutes,
                     status: item.trip.status,
                     vehiclePlate: item.trip.vehicle?.registration_number ?? null,
                     capacity: item.trip.vehicle?.capacity ?? null,
@@ -151,9 +194,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
                     id: item.trip.ride_instance.id,
                     rideId: item.trip.ride_instance.ride_id,
                     rideDate: item.trip.ride_instance.ride_date,
-                    departureTime: item.trip.ride_instance.departure_time,
                     timeSlot: item.trip.ride_instance.time_slot,
-                    routeName: item.trip.ride_instance.route?.name ?? null,
+                    route: item.trip.ride_instance.route
+                      ? {
+                          id: item.trip.ride_instance.route.id,
+                          name: item.trip.ride_instance.route.name,
+                          fromName: item.trip.ride_instance.route.from_name,
+                          toName: item.trip.ride_instance.route.to_name,
+                          fromLat: item.trip.ride_instance.route.from_latitude,
+                          fromLng: item.trip.ride_instance.route.from_longitude,
+                          toLat: item.trip.ride_instance.route.to_latitude,
+                          toLng: item.trip.ride_instance.route.to_longitude,
+                        }
+                      : null,
                   }
                 : null,
             })),

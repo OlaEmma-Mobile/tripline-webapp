@@ -8,22 +8,16 @@ const getLocalTodayIso = (): string => {
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
-const departureTimeSchema = z
-  .string()
-  .regex(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, 'Departure time must be in HH:MM or HH:MM:SS format');
-
 export const adminRidesFilterClientSchema = z.object({
   date: isoDateSchema.optional().or(z.literal('')),
-  status: z
-    .enum(['', 'scheduled', 'boarding', 'departed', 'completed', 'cancelled'])
-    .optional(),
+  status: z.enum(['', 'scheduled', 'cancelled']).optional(),
   page: z.number().int().positive('Page must be greater than 0'),
   limit: z.number().int().positive('Limit must be greater than 0').max(100, 'Limit cannot exceed 100'),
 });
 
 export const adminRideStatusUpdateClientSchema = z.object({
   id: z.string().uuid('Ride instance ID must be a valid UUID'),
-  status: z.enum(['scheduled', 'boarding', 'departed', 'completed', 'cancelled']),
+  status: z.enum(['scheduled', 'cancelled']),
 });
 
 export const adminRideMonitorActionClientSchema = z.object({
@@ -36,6 +30,5 @@ export const adminRideCreateClientSchema = z.object({
     const today = getLocalTodayIso();
     return value >= today;
   }, 'Ride date cannot be in the past'),
-  departureTime: departureTimeSchema,
-  timeSlot: z.enum(['morning', 'afternoon', 'evening']),
+  timeSlots: z.array(z.enum(['morning', 'evening'])).min(1, 'Select at least one time slot'),
 });

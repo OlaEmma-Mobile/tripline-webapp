@@ -114,6 +114,38 @@
       "key": "driverId2",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "tripDepartureTime",
+      "value": "06:30",
+      "type": "string"
+    },
+    {
+      "key": "estimatedDurationMinutes",
+      "value": "60",
+      "type": "string"
+    },
+    {
+      "key": "bulkBookingRuleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cronSecret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "ridePasscode",
+      "value": "1234"
+    },
+    {
+      "key": "newRidePasscode",
+      "value": "4321"
+    },
+    {
+      "key": "email",
+      "value": "tola@example.com"
     }
   ],
   "item": [
@@ -344,6 +376,86 @@
             "description": "Return authenticated wallet balance and credit state.",
             "url": "{{baseUrl}}/api/wallet"
           }
+        },
+        {
+          "name": "Setup Ride Passcode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Set the rider-only 4-digit ride passcode after account verification. This passcode is used for rider boarding approval and other protected ride actions.",
+            "url": "{{baseUrl}}/api/users/me/passcode/setup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passcode\": \"{{ridePasscode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Ride Passcode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Change the rider ride passcode at any time using the current 4-digit passcode.",
+            "url": "{{baseUrl}}/api/users/me/passcode/change",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPasscode\": \"{{ridePasscode}}\",\n  \"newPasscode\": \"{{newRidePasscode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Request Ride Passcode Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Request an email OTP to reset a forgotten rider ride passcode.",
+            "url": "{{baseUrl}}/api/users/me/passcode/reset/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Confirm Ride Passcode Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Reset the rider ride passcode after OTP verification using the verify token returned from OTP confirmation.",
+            "url": "{{baseUrl}}/api/users/me/passcode/reset/confirm",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verifyToken\": \"{{verifyToken}}\",\n  \"newPasscode\": \"{{newRidePasscode}}\"\n}"
+            }
+          }
         }
       ]
     },
@@ -503,11 +615,111 @@
                 "value": "application/json"
               }
             ],
-            "description": "Driver finalizes a rider's boarding state on a booked trip. Use `BOARDED` or `NO_SHOW`.",
+            "description": "Legacy driver boarding endpoint. It is now NO_SHOW-only. Use the trip boarding request + rider approval or passcode verification flow to mark a rider as boarded.",
             "url": "{{baseUrl}}/api/bookings/{{bookingId}}/board",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"action\": \"BOARDED\"\n}"
+              "raw": "{\n  \"action\": \"NO_SHOW\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Respond To Boarding Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Rider approves or declines a pending boarding request. Approving requires the rider 4-digit ride passcode. Declining keeps the booking booked.",
+            "url": "{{baseUrl}}/api/bookings/{{bookingId}}/boarding/respond",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"approve\",\n  \"passcode\": \"{{ridePasscode}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bulk Bookings",
+      "description": "Recurring rider bulk-booking rules. These rules generate occurrences and create normal trip bookings when matching trips are available.",
+      "item": [
+        {
+          "name": "Create Bulk Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create a recurring bulk-booking rule for one week, two weeks, three weeks, or one month using selected weekdays and one or both time slots.",
+            "url": "{{baseUrl}}/api/bulk-bookings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"pickupPointId\": \"{{pickupPointId}}\",\n  \"timeSlots\": [\n    \"morning\",\n    \"evening\"\n  ],\n  \"durationType\": \"1_week\",\n  \"dayMode\": \"working_days\",\n  \"startDate\": \"2026-03-23\",\n  \"seatCount\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "List Bulk Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "List recurring bulk-booking rules for the authenticated rider.",
+            "url": "{{baseUrl}}/api/bulk-bookings"
+          }
+        },
+        {
+          "name": "Get Bulk Booking",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Get one recurring bulk-booking rule and its generated occurrences.",
+            "url": "{{baseUrl}}/api/bulk-bookings/{{bulkBookingRuleId}}"
+          }
+        },
+        {
+          "name": "Update Bulk Booking",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Pause, resume, or cancel a recurring bulk-booking rule.",
+            "url": "{{baseUrl}}/api/bulk-bookings/{{bulkBookingRuleId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"paused\"\n}"
             }
           }
         }
@@ -515,7 +727,7 @@
     },
     {
       "name": "Ride Instances",
-      "description": "Rider-facing schedule endpoints. A ride instance is the planning template; nested `trips` are the operational/bookable units returned by these endpoints.",
+      "description": "Rider-facing schedule endpoints. A ride instance is the planning template; nested trips are the operational/bookable departures with their own departure times and estimated durations.",
       "item": [
         {
           "name": "List Ride Instances",
@@ -548,7 +760,7 @@
         {
           "name": "Get Ride Instance Details",
           "request": {
-            "description": "Get rider-facing ride-instance details. Response includes route info, pickup points, and nested operational `trips[]`. Riders must choose a `tripId` from that list before booking.",
+            "description": "Get rider-facing ride-instance details. Response includes route info, pickup points, and nested timed trips. Riders must choose a tripId from that list before booking.",
             "header": [
               {
                 "key": "Authorization",
@@ -576,7 +788,7 @@
         {
           "name": "Batch Boarding (Driver)",
           "request": {
-            "description": "Batch update passenger boarding status for a driver-managed ride context. Use booking IDs for passengers on trips created under the selected ride instance.",
+            "description": "Batch update passenger no-show status for a driver-managed ride context. Use booking IDs for passengers on trips created under the selected ride instance.",
             "header": [
               {
                 "key": "Authorization",
@@ -590,7 +802,7 @@
             "method": "PATCH",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"updates\": [\n    {\n      \"bookingId\": \"{{bookingId}}\",\n      \"status\": \"BOARDED\"\n    }\n  ]\n}"
+              "raw": "{\n  \"updates\": [\n    {\n      \"bookingId\": \"{{bookingId}}\",\n      \"status\": \"NO_SHOW\"\n    }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/ride-instances/{{rideInstanceId}}/boarding"
           }
@@ -911,7 +1123,7 @@
     },
     {
       "name": "Admin Ride Instances",
-      "description": "Admin schedule management flow: create a ride instance template first, open ride details, assign eligible drivers, and let the backend create trips automatically from active driver-vehicle assignments.",
+      "description": "Admin ride template management. Ride instances are schedule templates; assigning drivers creates operational trips.",
       "item": [
         {
           "name": "List Ride Instances",
@@ -941,11 +1153,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Step 1 of the admin scheduling flow. Create a ride-instance template only with route, date, departure time, and time slot. Do not send driverId or vehicleId.",
+            "description": "Create one or more ride instance templates for the same route/date. Send one time slot or both morning and evening in timeSlots. Trips are created later when drivers are assigned.",
             "url": "{{baseUrl}}/api/admin/ride-instances",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTime\": \"06:30\",\n  \"timeSlot\": \"morning\"\n}"
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-23\",\n  \"timeSlots\": [\n    \"morning\",\n    \"evening\"\n  ]\n}"
             }
           }
         },
@@ -963,11 +1175,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Create multiple ride-instance templates for one route/date/time-slot bucket. Drivers are assigned later from ride details, which then creates trips automatically.",
+            "description": "Create ride-instance templates for a route/date/time slot. Trips and timed departures are created later from the ride details assignment flow.",
             "url": "{{baseUrl}}/api/admin/ride-instances/bulk",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"departureTimes\": [\n    \"06:30\",\n    \"07:00\",\n    \"07:30\"\n  ],\n  \"timeSlot\": \"morning\"\n}"
+              "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"rideDate\": \"2026-03-01\",\n  \"timeSlot\": \"morning\"\n}"
             }
           }
         },
@@ -985,7 +1197,7 @@
                 "value": "application/json"
               }
             ],
-            "description": "Update ride instance status/assignments.",
+            "description": "Update ride instance template metadata. Valid statuses are scheduled or cancelled only.",
             "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}",
             "body": {
               "mode": "raw",
@@ -1052,7 +1264,7 @@
         {
           "name": "Ride Details (Admin)",
           "request": {
-            "description": "Open the admin ride-details view. Response contains the ride template summary plus `drivers[]` and `trips[]`. Each assigned driver includes `driverTripId`, assigned vehicle, and vehicle seat count.",
+            "description": "Get ride instance template details with assigned drivers and generated trips. Trip statuses are the operational truth; ride instance status remains template-level.",
             "header": [
               {
                 "key": "Authorization",
@@ -1073,7 +1285,7 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "Step 2 of the admin assignment flow. List active driver assignments for a ride instance. Each assignment is tied to a created trip and includes `driverTripId` plus the driver's assigned vehicle.",
+            "description": "Step 2 of the admin assignment flow. List active driver assignments for a ride instance. Each assignment includes driverTripId and is linked to a timed trip created from that driver assignment.",
             "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers"
           }
         },
@@ -1091,11 +1303,11 @@
                 "value": "application/json"
               }
             ],
-            "description": "Step 3 of the admin assignment flow. Assign one or more eligible drivers to a ride instance in a single request. Each successful assignment creates one trip automatically from the driver's active vehicle assignment.",
+            "description": "Assign one or more drivers to a ride instance template. Each assignment requires departureTime and estimatedDurationMinutes and creates one trip in scheduled status.",
             "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"driverIds\": [\n    \"{{driverId}}\",\n    \"{{driverId2}}\"\n  ]\n}"
+              "raw": "{\n  \"assignments\": [\n    {\n      \"driverId\": \"{{driverId}}\",\n      \"departureTime\": \"{{tripDepartureTime}}\",\n      \"estimatedDurationMinutes\": 60\n    },\n    {\n      \"driverId\": \"{{driverId2}}\",\n      \"departureTime\": \"07:00\",\n      \"estimatedDurationMinutes\": 75\n    }\n  ]\n}"
             }
           }
         },
@@ -1109,8 +1321,30 @@
                 "value": "Bearer {{accessToken}}"
               }
             ],
-            "description": "Step 4 of the admin assignment flow. Remove one driver from the ride instance. The associated trip is cancelled and the driver becomes eligible again if no slot conflict remains.",
+            "description": "Step 4 of the admin assignment flow. Remove one driver from the ride instance. The associated trip is preserved as awaiting_driver, remains reusable/bookable, and can be reassigned to a new driver later.",
             "url": "{{baseUrl}}/api/admin/ride-instances/{{rideInstanceId}}/drivers/{{driverId}}"
+          }
+        },
+        {
+          "name": "Replicate Ride Instances",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Replicate the selected ride instance template forward for the next 7 days or 1 month. Existing driver assignments and trip timings are carried forward and duplicates are skipped.",
+            "url": "{{baseUrl}}/api/admin/ride-instances/replicate",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceRideInstanceId\": \"{{rideInstanceId}}\",\n  \"duration\": \"7_days\"\n}"
+            }
           }
         }
       ]
@@ -1809,9 +2043,150 @@
       "name": "Trips",
       "item": [
         {
+          "name": "Get Trip Details (Rider)",
+          "request": {
+            "method": "GET",
+            "description": "Get rider-facing trip details including driver, vehicle, route context, pickup points, and seat metrics. A trip must be booked with tripId and is the operational child of a ride instance template.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request Boarding (Driver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Driver requests rider boarding approval for a booking on an ongoing trip. Request expires after 5 minutes.",
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}/boarding/{{bookingId}}/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}",
+                "boarding",
+                "{{bookingId}}",
+                "request"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Boarding Passcode (Driver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Driver verifies the rider's 4-digit ride passcode in person as the alternate boarding completion path while the request is still active.",
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}/boarding/{{bookingId}}/verify-passcode",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}",
+                "boarding",
+                "{{bookingId}}",
+                "verify-passcode"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passcode\": \"{{ridePasscode}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Start Trip (Driver)",
+          "request": {
+            "method": "POST",
+            "description": "Start a scheduled trip as the assigned driver. This changes trip.status from scheduled to ongoing. Trips in awaiting_driver must be reassigned before they can start. Ride instance status remains scheduled because it is only a template.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}",
+                "start"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Trip (Driver/Admin)",
+          "request": {
+            "method": "POST",
+            "description": "Complete an ongoing trip as the assigned driver or an admin operator. This changes trip.status from ongoing to completed.",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/trips/{{tripId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "trips",
+                "{{tripId}}",
+                "complete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Trip History (Driver/Rider)",
           "request": {
-            "description": "Trip-first history endpoint. Drivers receive operational trips; riders receive bookings with nested trip and ride-instance summaries.",
+            "description": "Trip-first history endpoint. Supports status filters via `status=ongoing_rides`, `status=booked_rides`, or `status=past_rides`. Drivers receive operational trips; riders receive bookings with nested trip and ride-instance summaries.",
             "header": [
               {
                 "key": "Authorization",
@@ -1819,11 +2194,52 @@
               }
             ],
             "method": "GET",
-            "url": "{{baseUrl}}/api/trips/me?page=1&limit=20"
+            "url": "{{baseUrl}}/api/trips/me?page=1&limit=20&status=booked_rides"
           }
         }
       ],
-      "description": "Trip-first history and operational reporting endpoints for drivers and riders."
+      "description": "Trip-first detail, lifecycle, and history endpoints. Trips are the operational/bookable unit; ride instances are schedule templates."
+    },
+    {
+      "name": "Internal Jobs",
+      "item": [
+        {
+          "name": "Process Bulk Bookings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-cron-secret",
+                "value": "{{cronSecret}}"
+              }
+            ],
+            "description": "Internal cron endpoint that processes pending bulk-booking occurrences and creates normal bookings when matching trips exist.",
+            "url": "{{baseUrl}}/api/internal/jobs/process-bulk-bookings"
+          }
+        },
+        {
+          "name": "Replicate Ride Instances Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-cron-secret",
+                "value": "{{cronSecret}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Internal cron endpoint to replicate ride templates and their assigned trips into future periods.",
+            "url": "{{baseUrl}}/api/internal/jobs/replicate-ride-instances",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceRideInstanceId\": \"{{rideInstanceId}}\",\n  \"duration\": \"7_days\"\n}"
+            }
+          }
+        }
+      ]
     }
   ]
 }

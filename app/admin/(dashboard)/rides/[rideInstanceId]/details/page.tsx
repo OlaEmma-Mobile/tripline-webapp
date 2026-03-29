@@ -15,7 +15,6 @@ interface RideDetailsPayload {
     id: string;
     rideId: string;
     rideDate: string;
-    departureTime: string;
     timeSlot: string;
     status: string;
     route: { id: string; name: string; from_name: string; to_name: string } | null;
@@ -37,7 +36,9 @@ interface RideDetailsPayload {
     trips: Array<{
       id: string;
       tripId: string;
-      driverTripId: string;
+      driverTripId: string | null;
+      departureTime: string;
+      estimatedDurationMinutes: number;
       status: string;
       capacity: number;
       reservedSeats: number;
@@ -132,7 +133,7 @@ export default function AdminRideDetailsPage() {
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Ride</p>
               <p className="mt-2 text-lg font-semibold text-foreground">{details.ride.rideId}</p>
               <p className="text-xs text-muted-foreground">
-                {details.ride.rideDate} · {details.ride.departureTime}
+                {details.ride.rideDate} · {details.ride.timeSlot}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -195,12 +196,15 @@ export default function AdminRideDetailsPage() {
                 details.ride.trips.map((trip) => (
                   <div key={trip.id} className="rounded-xl border border-border bg-background p-4">
                     <p className="font-semibold text-foreground">
-                      {trip.tripId} · {trip.driverTripId}
+                      {trip.tripId}{trip.driverTripId ? ` · ${trip.driverTripId}` : ''}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {trip.driver
                         ? `${trip.driver.firstName} ${trip.driver.lastName}`.trim()
                         : 'Driver unavailable'}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {trip.departureTime} · {trip.estimatedDurationMinutes} mins
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {trip.vehicle

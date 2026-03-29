@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const coordinateSchema = z.number().finite();
 
-export const routeStatusSchema = z.enum(['active', 'inactive']);
+export const routeStatusSchema = z.enum(['available', 'coming_soon']);
 
 export const createRouteSchema = z.object({
   name: z.string().min(1, 'Route name is required'),
