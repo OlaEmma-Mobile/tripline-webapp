@@ -16,7 +16,7 @@ import type {
  * Admin operational service layer.
  */
 export class AdminOpsService {
-  constructor(private readonly repo: AdminOpsRepository) {}
+  constructor(private readonly repo: AdminOpsRepository) { }
 
   /**
    * Returns bookings list for admin operations screen.

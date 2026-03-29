@@ -32,4 +32,14 @@ export function assertFirebaseEnv(): void {
   if (missing.length > 0) {
     throw new Error(`Missing required Firebase environment variables: ${missing.join(', ')}`);
   }
+
+  try {
+    const databaseUrl = new URL(process.env.FIREBASE_DATABASE_URL!);
+    if (!['http:', 'https:'].includes(databaseUrl.protocol)) {
+      throw new Error('FIREBASE_DATABASE_URL must use http or https');
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'invalid URL';
+    throw new Error(`Invalid FIREBASE_DATABASE_URL: ${message}`);
+  }
 }

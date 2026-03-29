@@ -50,6 +50,27 @@ describe('RealtimeService', () => {
     });
   });
 
+  it('writes trip status and compatibility ride projection', async () => {
+    const { db, writes } = createMockDb();
+    const service = new RealtimeService(
+      { getFcmToken: async () => null, clearFcmToken: async () => undefined } as never,
+      {
+        getDb: () => db as never,
+        getMessaging: () => ({ send: async () => 'msg-1' }) as never,
+      }
+    );
+
+    await service.updateTripStatus({
+      tripId: 'trip-1',
+      rideInstanceId: 'ride-1',
+      driverId: 'driver-1',
+      status: 'ongoing',
+    });
+
+    expect(writes.some((entry) => entry.path === 'realtime/trips/trip-1/status' && entry.value === 'ongoing')).toBe(true);
+    expect(writes.some((entry) => entry.path === 'realtime/rides/ride-1/tripId' && entry.value === 'trip-1')).toBe(true);
+  });
+
   it('writes location + online flag', async () => {
     const { db, writes } = createMockDb();
     const service = new RealtimeService(
@@ -68,6 +89,64 @@ describe('RealtimeService', () => {
     expect(writes[1]).toMatchObject({
       path: 'realtime/rides/ride-2/location',
       value: { lat: 6.43, lng: 3.45 },
+    });
+  });
+
+  it('writes trip-scoped location through the backend relay path', async () => {
+    const { db, writes } = createMockDb();
+    const service = new RealtimeService(
+      { getFcmToken: async () => null, clearFcmToken: async () => undefined } as never,
+      {
+        getDb: () => db as never,
+        getMessaging: () => ({ send: async () => 'msg-1' }) as never,
+      }
+    );
+
+    await service.updateTripLocation({
+      tripId: 'trip-2',
+      rideInstanceId: 'ride-2',
+      driverId: 'driver-1',
+      status: 'ongoing',
+      lat: 6.43,
+      lng: 3.45,
+      driverOnline: true,
+      recordedAt: '2026-03-28T12:00:00.000Z',
+    });
+
+    expect(writes.some((entry) => entry.path === 'realtime/trips/trip-2/location')).toBe(true);
+    expect(
+      writes.some(
+        (entry) =>
+          entry.path === 'realtime/rides/ride-2/location' &&
+          JSON.stringify(entry.value) ===
+            JSON.stringify({ lat: 6.43, lng: 3.45, updatedAt: '2026-03-28T12:00:00.000Z' })
+      )
+    ).toBe(true);
+  });
+
+  it('writes trip eligibility snapshot', async () => {
+    const { db, writes } = createMockDb();
+    const service = new RealtimeService(
+      { getFcmToken: async () => null, clearFcmToken: async () => undefined } as never,
+      {
+        getDb: () => db as never,
+        getMessaging: () => ({ send: async () => 'msg-1' }) as never,
+      }
+    );
+
+    await service.updateTripEligibility('trip-2', {
+      eligible: true,
+      readyToComplete: true,
+      nearDestination: true,
+      withinDwellWindow: true,
+      durationThresholdMet: true,
+      gpsFresh: true,
+      distanceToDestinationMeters: 42,
+      lastLocationAt: '2026-03-28T12:00:00.000Z',
+    });
+
+    expect(writes[writes.length - 1]).toMatchObject({
+      path: 'realtime/trips/trip-2/eligibility',
     });
   });
 

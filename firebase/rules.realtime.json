@@ -1,9 +1,15 @@
 {
   "rules": {
     "realtime": {
+      "trips": {
+        "$tripId": {
+          ".read": true,
+          ".write": false
+        }
+      },
       "rides": {
         "$rideId": {
-          ".read": "auth != null",
+          ".read": true,
           ".write": false
         }
       },

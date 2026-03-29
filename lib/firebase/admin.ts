@@ -6,6 +6,7 @@ import { assertFirebaseEnv } from '@/lib/utils/env';
  */
 export function getFirebaseAdminApp() {
   assertFirebaseEnv();
+  const databaseURL = process.env.FIREBASE_DATABASE_URL!.trim().replace(/\/+$/, '');
   if (admin.apps.length > 0) {
     return admin.app();
   }
@@ -16,7 +17,7 @@ export function getFirebaseAdminApp() {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
       privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
     }),
-    databaseURL: process.env.FIREBASE_DATABASE_URL!,
+    databaseURL,
   });
 }
 

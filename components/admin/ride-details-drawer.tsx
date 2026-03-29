@@ -11,8 +11,20 @@ import {
   DialogRoot,
   DialogTitle,
 } from '@/components/ui/dialog';
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
+
 import { apiRequest } from '@/lib/utils/client-api';
 import { adminQueryKeys } from '@/lib/hooks/admin-query-keys';
+
+
+
 
 interface RideDetailsDrawerProps {
   open: boolean;
@@ -146,24 +158,18 @@ export function RideDetailsDrawer({
 
   const assignMutation = useMutation({
     mutationFn: async (): Promise<void> => {
-      if (!rideInstanceId) {
-        throw new Error('Ride instance is required');
-      }
+      if (!rideInstanceId) throw new Error('Ride instance is required');
       const assignments = Object.entries(selectedDrivers).map(([driverId, config]) => ({
         driverId,
         departureTime: config.departureTime,
         estimatedDurationMinutes: Number(config.estimatedDurationMinutes),
       }));
-      if (assignments.length === 0) {
-        throw new Error('Choose one or more drivers before assigning');
-      }
+      if (assignments.length === 0) throw new Error('Choose one or more drivers before assigning');
       const response = await apiRequest(`/api/admin/ride-instances/${rideInstanceId}/drivers`, {
         method: 'POST',
         body: JSON.stringify({ assignments }),
       });
-      if (response.hasError) {
-        throw new Error(response.message || 'Unable to assign drivers');
-      }
+      if (response.hasError) throw new Error(response.message || 'Unable to assign drivers');
     },
     onSuccess: async () => {
       setSelectedDrivers({});
@@ -173,15 +179,12 @@ export function RideDetailsDrawer({
 
   const unassignMutation = useMutation({
     mutationFn: async (driverId: string): Promise<void> => {
-      if (!rideInstanceId) {
-        throw new Error('Ride instance is required');
-      }
-      const response = await apiRequest(`/api/admin/ride-instances/${rideInstanceId}/drivers/${driverId}`, {
-        method: 'DELETE',
-      });
-      if (response.hasError) {
-        throw new Error(response.message || 'Unable to unassign driver');
-      }
+      if (!rideInstanceId) throw new Error('Ride instance is required');
+      const response = await apiRequest(
+        `/api/admin/ride-instances/${rideInstanceId}/drivers/${driverId}`,
+        { method: 'DELETE' }
+      );
+      if (response.hasError) throw new Error(response.message || 'Unable to unassign driver');
     },
     onSuccess: refreshQueries,
   });
@@ -193,9 +196,7 @@ export function RideDetailsDrawer({
         method: 'POST',
         body: JSON.stringify({ sourceRideInstanceId: rideInstanceId, duration: replicateDuration }),
       });
-      if (response.hasError) {
-        throw new Error(response.message || 'Unable to replicate ride templates');
-      }
+      if (response.hasError) throw new Error(response.message || 'Unable to replicate ride templates');
     },
     onSuccess: refreshQueries,
   });
@@ -206,20 +207,21 @@ export function RideDetailsDrawer({
   );
 
   return (
-    <DialogRoot
+    <Drawer
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) setSelectedDrivers({});
         onOpenChange(nextOpen);
       }}
+      direction="right"
     >
-      <DialogContent className="left-auto right-0 top-0 h-screen w-[min(96vw,64rem)] max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none rounded-l-2xl border-l border-border p-6">
-        <DialogHeader>
-          <DialogTitle>Ride Details</DialogTitle>
-          <DialogDescription>
+      <DrawerContent className="left-auto right-0 top-0 h-screen w-[min(96vw,64rem)] mt-0 rounded-none rounded-l-2xl overflow-y-auto p-6">
+        <DrawerHeader>
+          <DrawerTitle>Ride Details</DrawerTitle>
+          <DrawerDescription>
             Create the ride template first, then assign one or more drivers. Each assignment creates its own timed trip under this ride instance.
-          </DialogDescription>
-        </DialogHeader>
+          </DrawerDescription>
+        </DrawerHeader>
 
         {detailsQuery.isLoading ? (
           <div className="space-y-4 py-4">
@@ -273,7 +275,9 @@ export function RideDetailsDrawer({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Replicate This Template</h3>
-                  <p className="text-sm text-muted-foreground">Create future ride instances for this same slot and carry forward current driver assignments and trip timings.</p>
+                  <p className="text-sm text-muted-foreground">
+                    Create future ride instances for this same slot and carry forward current driver assignments and trip timings.
+                  </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <label className="text-sm">
@@ -441,61 +445,6 @@ export function RideDetailsDrawer({
             </section>
 
             <section className="rounded-2xl border border-border bg-card p-5">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">Trips Under This Ride</h3>
-                <p className="text-sm text-muted-foreground">
-                  Trips are created automatically from driver assignments. Capacity is tracked per trip vehicle.
-                </p>
-              </div>
-
-              {detailsQuery.data.ride.trips.length === 0 ? (
-                <p className="mt-4 text-sm text-muted-foreground">No trips created yet because no driver has been assigned.</p>
-              ) : (
-                <div className="mt-4 grid gap-3">
-                  {detailsQuery.data.ride.trips.map((trip) => (
-                    <div key={trip.id} className="rounded-xl border border-border bg-background p-4">
-                      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                          <p className="font-semibold text-foreground">
-                            {trip.tripId}{trip.driverTripId ? ` · ${trip.driverTripId}` : ''}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {trip.driver ? `${trip.driver.firstName} ${trip.driver.lastName}`.trim() : 'Awaiting driver reassignment'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {trip.departureTime} · {trip.estimatedDurationMinutes} mins
-                          </p>
-                        </div>
-                        <span className={`rounded-full ${trip.status === 'cancelled' ? 'text-red-600 bg-red-100' : trip.status === 'completed' ? 'text-green-600 bg-green-200' : trip.status === 'awaiting_driver' ? 'text-amber-700 bg-amber-100' : 'text-blue-600 bg-blue-200'} px-2 py-1 text-xs`}>
-                          {trip.status}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Vehicle</p>
-                          <p className="text-sm font-medium text-foreground">
-                            {trip.vehicle?.registrationNumber ?? (trip.status === 'awaiting_driver' ? 'Vehicle pending reassignment' : 'Unknown vehicle')}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{trip.vehicle?.model ?? 'Model unavailable'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Seat Count</p>
-                          <p className="text-sm font-medium text-foreground">{trip.vehicle?.capacity ?? trip.capacity} seats</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-wide text-muted-foreground">Load</p>
-                          <p className="text-sm font-medium text-foreground">
-                            {trip.reservedSeats} reserved · {trip.availableSeats} available
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Bookings</h3>
@@ -539,7 +488,7 @@ export function RideDetailsDrawer({
             </section>
           </div>
         ) : null}
-      </DialogContent>
-    </DialogRoot>
+      </DrawerContent>
+    </Drawer>
   );
 }

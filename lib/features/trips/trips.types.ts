@@ -1,5 +1,45 @@
 export type TripStatus = 'scheduled' | 'awaiting_driver' | 'ongoing' | 'completed' | 'cancelled';
 
+export type TripCompletionMode = 'normal' | 'override';
+
+export interface TripCompletionEligibility {
+  eligible: boolean;
+  readyToComplete: boolean;
+  nearDestination: boolean;
+  withinDwellWindow: boolean;
+  durationThresholdMet: boolean;
+  gpsFresh: boolean;
+  distanceToDestinationMeters: number | null;
+  lastLocationAt: string | null;
+}
+
+export interface TripRealtimeSnapshot {
+  tripId: string;
+  rideInstanceId: string;
+  driverId: string | null;
+  status: TripStatus | null;
+  driverOnline: boolean;
+  location: {
+    lat: number | null;
+    lng: number | null;
+    updatedAt: string | null;
+  };
+  eligibility: Pick<TripCompletionEligibility, 'readyToComplete' | 'distanceToDestinationMeters'> & {
+    updatedAt: string | null;
+  };
+}
+
+export interface TripLocationUpdateResult {
+  tripId: string;
+  rideInstanceId: string;
+  lat: number;
+  lng: number;
+  driverOnline: boolean;
+  recordedAt: string;
+  tripStatus: TripStatus;
+  completionEligibility: TripCompletionEligibility;
+}
+
 export interface TripRecord {
   id: string;
   trip_id: string;
@@ -117,4 +157,5 @@ export interface RiderTripDetailDTO {
     orderIndex: number;
     tokenCost: number;
   }>;
+  completionEligibility?: TripCompletionEligibility;
 }

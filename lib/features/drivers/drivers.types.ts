@@ -76,6 +76,7 @@ export interface DriverManifestPassengerDTO {
   pickupPointLongitude: number | null;
   bookingStatus: string;
   boardingStatus: string;
+  boardedAt: string | null;
   boardingExpiresAt: string | null;
   boardingVerificationMethod: string | null;
 }
@@ -118,6 +119,9 @@ export interface DriverManifestBookingRow {
   pickup_point_latitude: number | null;
   pickup_point_longitude: number | null;
   boarding_status: string;
+  boarded_at: string | null;
+  boarding_approved_at: string | null;
+  boarding_verified_at: string | null;
   boarding_expires_at: string | null;
   boarding_verification_method: string | null;
   pickup_point: { id: string; name: string } | null;
@@ -160,20 +164,22 @@ export interface DriverManifestCountsRow {
 }
 
 export interface DriverManifestDetailDTO {
-  trip: {
+  id: string;
+  tripId: string;
+  driverTripId: string | null;
+  status: string;
+  departureTime: string;
+  estimatedDurationMinutes: number;
+  capacity: number;
+  reservedSeats: number;
+  availableSeats: number;
+  rideInstance: {
     id: string;
-    tripId: string;
-    driverTripId: string;
-    rideInstanceId: string;
     rideId: string;
     rideDate: string;
-    departureTime: string;
-    estimatedDurationMinutes: number;
     timeSlot: string;
-    status: string;
-    vehiclePlate: string;
-    capacity: number;
     route: {
+      id: string;
       name: string;
       fromName: string;
       toName: string;
@@ -181,8 +187,29 @@ export interface DriverManifestDetailDTO {
       fromLng: number;
       toLat: number;
       toLng: number;
-    };
+    } | null;
   };
+  driver: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string | null;
+  } | null;
+  vehicle: {
+    id: string;
+    registrationNumber: string;
+    model: string | null;
+    capacity: number;
+  } | null;
+  pickupPoints: Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    orderIndex: number;
+    tokenCost: number;
+  }>;
   passengers: DriverManifestPassengerDTO[];
 }
 

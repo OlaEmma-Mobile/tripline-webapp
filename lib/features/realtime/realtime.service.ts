@@ -3,8 +3,26 @@ import { notificationsService } from '@/lib/features/notifications/notifications
 import { usersRepository, UsersRepository } from '@/lib/features/users/users.repository';
 import { AppError } from '@/lib/utils/errors';
 import { logStep } from '@/lib/utils/logger';
+import type { TripCompletionEligibility, TripStatus } from '@/lib/features/trips/trips.types';
 
 export type RealtimeRideStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled';
+
+interface TripRealtimeState {
+  driverId: string | null;
+  status: TripStatus | null;
+  driverOnline: boolean;
+  location: {
+    lat: number | null;
+    lng: number | null;
+    updatedAt: string | null;
+  };
+  eligibility: {
+    readyToComplete: boolean;
+    distanceToDestinationMeters: number | null;
+    updatedAt: string | null;
+  };
+  arrivalEnteredAt: string | null;
+}
 
 export interface CreateUserNotificationInput {
   userId: string;
@@ -69,10 +87,39 @@ export class RealtimeService {
   }
 
   /**
+   * Updates the trip realtime status and driver ownership used for direct Firebase location writes.
+   */
+  async updateTripStatus(input: {
+    tripId: string;
+    rideInstanceId: string;
+    driverId: string | null;
+    status: TripStatus;
+  }): Promise<void> {
+    const now = new Date().toISOString();
+    const tripRef = this.deps.getDb().ref(`realtime/trips/${input.tripId}`);
+    await tripRef.child('tripId').set(input.tripId);
+    await tripRef.child('rideInstanceId').set(input.rideInstanceId);
+    await tripRef.child('driverId').set(input.driverId);
+    await tripRef.child('status').set(input.status);
+    await tripRef.child('statusUpdatedAt').set(now);
+
+    // Compatibility projection for existing ride-level readers.
+    const rideRef = this.deps.getDb().ref(`realtime/rides/${input.rideInstanceId}`);
+    await rideRef.child('tripId').set(input.tripId);
+    await rideRef.child('driverId').set(input.driverId);
+    await rideRef.child('status').set(input.status);
+    await rideRef.child('statusUpdatedAt').set(now);
+  }
+
+  /**
    * Deletes the ride realtime node when a ride is permanently removed.
    */
   async deleteRideState(rideInstanceId: string): Promise<void> {
     await this.deps.getDb().ref(`realtime/rides/${rideInstanceId}`).set(null);
+  }
+
+  async deleteTripState(tripId: string): Promise<void> {
+    await this.deps.getDb().ref(`realtime/trips/${tripId}`).set(null);
   }
 
   /**
@@ -87,6 +134,130 @@ export class RealtimeService {
     const rideRef = this.deps.getDb().ref(`realtime/rides/${rideInstanceId}`);
     await rideRef.child('driverOnline').set(driverOnline);
     await rideRef.child('location').set({ lat, lng });
+  }
+
+  async updateTripLocation(input: {
+    tripId: string;
+    rideInstanceId: string;
+    driverId: string | null;
+    status: TripStatus;
+    lat: number;
+    lng: number;
+    driverOnline: boolean;
+    recordedAt: string;
+  }): Promise<void> {
+    const tripRef = this.deps.getDb().ref(`realtime/trips/${input.tripId}`);
+    await tripRef.child('tripId').set(input.tripId);
+    await tripRef.child('rideInstanceId').set(input.rideInstanceId);
+    await tripRef.child('driverId').set(input.driverId);
+    await tripRef.child('status').set(input.status);
+    await tripRef.child('driverOnline').set(input.driverOnline);
+    await tripRef.child('location').set({
+      lat: input.lat,
+      lng: input.lng,
+      updatedAt: input.recordedAt,
+    });
+
+    await this.syncRideProjectionFromTrip({
+      tripId: input.tripId,
+      rideInstanceId: input.rideInstanceId,
+      driverId: input.driverId,
+      status: input.status,
+      driverOnline: input.driverOnline,
+      location: {
+        lat: input.lat,
+        lng: input.lng,
+        updatedAt: input.recordedAt,
+      },
+      eligibility: null,
+    });
+  }
+
+  async getTripRealtimeState(tripId: string): Promise<TripRealtimeState | null> {
+    const snapshot = (await this.deps.getDb().ref(`realtime/trips/${tripId}`).get()) as {
+      exists(): boolean;
+      val?: () => unknown;
+    };
+    if (!snapshot.exists()) return null;
+
+    const value = (snapshot.val?.() ?? null) as Record<string, any> | null;
+    return {
+      driverId: typeof value?.driverId === 'string' ? value.driverId : null,
+      status: typeof value?.status === 'string' ? (value.status as TripStatus) : null,
+      driverOnline: Boolean(value?.driverOnline),
+      location: {
+        lat: typeof value?.location?.lat === 'number' ? value.location.lat : null,
+        lng: typeof value?.location?.lng === 'number' ? value.location.lng : null,
+        updatedAt: this.normalizeTimestamp(value?.location?.updatedAt),
+      },
+      eligibility: {
+        readyToComplete: Boolean(value?.eligibility?.readyToComplete),
+        distanceToDestinationMeters:
+          typeof value?.eligibility?.distanceToDestinationMeters === 'number'
+            ? value.eligibility.distanceToDestinationMeters
+            : null,
+        updatedAt: this.normalizeTimestamp(value?.eligibility?.updatedAt),
+      },
+      arrivalEnteredAt: this.normalizeTimestamp(value?.arrivalEnteredAt),
+    };
+  }
+
+  async updateTripArrivalState(tripId: string, arrivalEnteredAt: string | null): Promise<void> {
+    await this.deps.getDb().ref(`realtime/trips/${tripId}/arrivalEnteredAt`).set(arrivalEnteredAt);
+  }
+
+  async updateTripEligibility(
+    tripId: string,
+    eligibility: TripCompletionEligibility
+  ): Promise<void> {
+    const updatedAt = new Date().toISOString();
+    await this.deps.getDb().ref(`realtime/trips/${tripId}/eligibility`).set({
+      readyToComplete: eligibility.readyToComplete,
+      distanceToDestinationMeters: eligibility.distanceToDestinationMeters,
+      nearDestination: eligibility.nearDestination,
+      withinDwellWindow: eligibility.withinDwellWindow,
+      durationThresholdMet: eligibility.durationThresholdMet,
+      gpsFresh: eligibility.gpsFresh,
+      lastLocationAt: eligibility.lastLocationAt,
+      updatedAt,
+    });
+  }
+
+  async syncRideProjectionFromTrip(input: {
+    tripId: string;
+    rideInstanceId: string;
+    driverId: string | null;
+    status: TripStatus | null;
+    driverOnline: boolean;
+    location: { lat: number | null; lng: number | null; updatedAt: string | null };
+    eligibility?: TripCompletionEligibility | null;
+  }): Promise<void> {
+    await this.deps.getDb().ref(`realtime/rides/${input.rideInstanceId}`).set({
+      tripId: input.tripId,
+      driverId: input.driverId,
+      status: input.status,
+      driverOnline: input.driverOnline,
+      location: {
+        lat: input.location.lat,
+        lng: input.location.lng,
+        updatedAt: input.location.updatedAt,
+      },
+      eligibility: input.eligibility
+        ? {
+            readyToComplete: input.eligibility.readyToComplete,
+            distanceToDestinationMeters: input.eligibility.distanceToDestinationMeters,
+            updatedAt: new Date().toISOString(),
+          }
+        : null,
+    });
+  }
+
+  private normalizeTimestamp(value: unknown): string | null {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return new Date(value).toISOString();
+    }
+    return null;
   }
 
   /**

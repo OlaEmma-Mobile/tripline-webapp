@@ -8,8 +8,96 @@ import { errorResponse, jsonResponse } from '@/lib/utils/responses';
 import { zodErrorToFieldErrors } from '@/lib/utils/validation';
 
 /**
- * POST /api/trips/:id/boarding/:bookingId/verify-passcode
- * Driver verifies the rider's passcode to finalize boarding.
+ * @openapi
+ * /api/trips/{id}/boarding/{bookingId}/verify-passcode:
+ *   post:
+ *     tags:
+ *       - Bookings
+ *     summary: Verify a rider boarding passcode
+ *     description: Driver verifies the rider passcode to complete boarding without rider approval from their phone.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Trip UUID
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Booking UUID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             passcode: '1234'
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyBoardingPasscodeRequest'
+ *     responses:
+ *       '200':
+ *         description: Boarding verified successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               hasError: false
+ *               data:
+ *                 bookingId: d693a722-a903-48a0-9262-7e0baacf54e2
+ *                 bookingStatus: boarded
+ *                 boardingStatus: approved
+ *                 boardingExpiresAt: null
+ *                 boardingVerificationMethod: passcode
+ *               message: Boarding verified
+ *               description: Rider passcode verified and boarding completed successfully
+ *               errors: {}
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasError:
+ *                   type: boolean
+ *                   example: false
+ *                 data:
+ *                   $ref: '#/components/schemas/BoardingActionResult'
+ *                 message:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 errors:
+ *                   type: object
+ *       '400':
+ *         description: Invalid request or booking-trip mismatch
+ *         content:
+ *           application/json:
+ *             example:
+ *               hasError: true
+ *               data: null
+ *               message: Booking does not belong to this trip
+ *               description: Booking does not belong to this trip
+ *               errors: {}
+ *       '401':
+ *         description: Missing token or incorrect passcode
+ *         content:
+ *           application/json:
+ *             example:
+ *               hasError: true
+ *               data: null
+ *               message: Ride passcode is incorrect
+ *               description: Ride passcode is incorrect
+ *               errors: {}
+ *       '403':
+ *         description: Only the assigned driver for the trip can verify boarding
+ *       '404':
+ *         description: Trip or booking not found
+ *       '409':
+ *         description: Booking is not in a boardable state
+ *       '500':
+ *         description: Unexpected server error
  */
 export async function POST(
   request: NextRequest,

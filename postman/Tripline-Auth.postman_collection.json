@@ -671,7 +671,69 @@
               "mode": "raw",
               "raw": "{\n  \"routeId\": \"{{routeId}}\",\n  \"pickupPointId\": \"{{pickupPointId}}\",\n  \"timeSlots\": [\n    \"morning\",\n    \"evening\"\n  ],\n  \"durationType\": \"1_week\",\n  \"dayMode\": \"working_days\",\n  \"startDate\": \"2026-03-23\",\n  \"seatCount\": 1\n}"
             }
-          }
+          },
+          "response": [
+            {
+              "name": "Created",
+              "originalRequest": {},
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"a0ecb80f-a6fb-4a2f-98fb-b95171b1d3c6\",\n    \"riderId\": \"3a51c38e-1a15-4bc4-8c48-a2e80fb85c2f\",\n    \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n    \"pickupPointId\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n    \"timeSlots\": [\n      \"morning\",\n      \"evening\"\n    ],\n    \"durationType\": \"2_weeks\",\n    \"dayMode\": \"working_days\",\n    \"weekdays\": [\n      \"mon\",\n      \"tue\",\n      \"wed\",\n      \"thu\",\n      \"fri\"\n    ],\n    \"startDate\": \"2026-03-31\",\n    \"endDate\": \"2026-04-13\",\n    \"seatCount\": 1,\n    \"status\": \"active\",\n    \"lastProcessedDate\": \"2026-03-31\",\n    \"createdAt\": \"2026-03-28T07:00:00.000Z\",\n    \"updatedAt\": \"2026-03-28T07:00:00.000Z\",\n    \"occurrences\": [\n      {\n        \"id\": \"79df4c81-2b78-4934-888b-4eb54d52a670\",\n        \"ruleId\": \"a0ecb80f-a6fb-4a2f-98fb-b95171b1d3c6\",\n        \"serviceDate\": \"2026-03-31\",\n        \"timeSlot\": \"morning\",\n        \"seatCount\": 1,\n        \"tripId\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n        \"bookingId\": \"d693a722-a903-48a0-9262-7e0baacf54e2\",\n        \"status\": \"booked\",\n        \"failureReason\": null,\n        \"createdAt\": \"2026-03-28T07:00:00.000Z\",\n        \"updatedAt\": \"2026-03-28T07:00:02.000Z\"\n      }\n    ]\n  },\n  \"message\": \"Bulk booking created\",\n  \"description\": \"Recurring bulk booking created successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Invalid request payload\",\n  \"description\": \"Please fix the highlighted fields\",\n  \"errors\": {\n    \"timeSlots\": [\n      \"Array must contain at least 1 element(s)\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "Unauthorized",
+              "originalRequest": {},
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Unauthorized\",\n  \"description\": \"Authorization token is required\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Pickup point not found for this route\",\n  \"description\": \"Unable to create bulk booking\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "List Bulk Bookings",
@@ -685,7 +747,39 @@
             ],
             "description": "List recurring bulk-booking rules for the authenticated rider.",
             "url": "{{baseUrl}}/api/bulk-bookings"
-          }
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"a0ecb80f-a6fb-4a2f-98fb-b95171b1d3c6\",\n        \"riderId\": \"3a51c38e-1a15-4bc4-8c48-a2e80fb85c2f\",\n        \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n        \"pickupPointId\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n        \"timeSlots\": [\n          \"morning\",\n          \"evening\"\n        ],\n        \"durationType\": \"2_weeks\",\n        \"dayMode\": \"working_days\",\n        \"weekdays\": [\n          \"mon\",\n          \"tue\",\n          \"wed\",\n          \"thu\",\n          \"fri\"\n        ],\n        \"startDate\": \"2026-03-31\",\n        \"endDate\": \"2026-04-13\",\n        \"seatCount\": 1,\n        \"status\": \"active\",\n        \"lastProcessedDate\": \"2026-03-31\",\n        \"createdAt\": \"2026-03-28T07:00:00.000Z\",\n        \"updatedAt\": \"2026-03-28T07:00:00.000Z\"\n      }\n    ]\n  },\n  \"message\": \"Bulk bookings fetched\",\n  \"description\": \"Bulk booking rules retrieved successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Unauthorized",
+              "originalRequest": {},
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Unauthorized\",\n  \"description\": \"Authorization token is required\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Get Bulk Booking",
@@ -699,7 +793,39 @@
             ],
             "description": "Get one recurring bulk-booking rule and its generated occurrences.",
             "url": "{{baseUrl}}/api/bulk-bookings/{{bulkBookingRuleId}}"
-          }
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"a0ecb80f-a6fb-4a2f-98fb-b95171b1d3c6\",\n    \"riderId\": \"3a51c38e-1a15-4bc4-8c48-a2e80fb85c2f\",\n    \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n    \"pickupPointId\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n    \"timeSlots\": [\n      \"morning\",\n      \"evening\"\n    ],\n    \"durationType\": \"2_weeks\",\n    \"dayMode\": \"working_days\",\n    \"weekdays\": [\n      \"mon\",\n      \"tue\",\n      \"wed\",\n      \"thu\",\n      \"fri\"\n    ],\n    \"startDate\": \"2026-03-31\",\n    \"endDate\": \"2026-04-13\",\n    \"seatCount\": 1,\n    \"status\": \"active\",\n    \"lastProcessedDate\": \"2026-03-31\",\n    \"createdAt\": \"2026-03-28T07:00:00.000Z\",\n    \"updatedAt\": \"2026-03-28T07:00:00.000Z\",\n    \"occurrences\": []\n  },\n  \"message\": \"Bulk booking fetched\",\n  \"description\": \"Bulk booking details retrieved successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Bulk booking rule not found\",\n  \"description\": \"Bulk booking rule not found\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Update Bulk Booking",
@@ -721,7 +847,54 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"paused\"\n}"
             }
-          }
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"a0ecb80f-a6fb-4a2f-98fb-b95171b1d3c6\",\n    \"riderId\": \"3a51c38e-1a15-4bc4-8c48-a2e80fb85c2f\",\n    \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n    \"pickupPointId\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n    \"timeSlots\": [\n      \"morning\",\n      \"evening\"\n    ],\n    \"durationType\": \"2_weeks\",\n    \"dayMode\": \"working_days\",\n    \"weekdays\": [\n      \"mon\",\n      \"tue\",\n      \"wed\",\n      \"thu\",\n      \"fri\"\n    ],\n    \"startDate\": \"2026-03-31\",\n    \"endDate\": \"2026-04-13\",\n    \"seatCount\": 1,\n    \"status\": \"paused\",\n    \"lastProcessedDate\": \"2026-03-31\",\n    \"createdAt\": \"2026-03-28T07:00:00.000Z\",\n    \"updatedAt\": \"2026-03-28T09:30:00.000Z\"\n  },\n  \"message\": \"Bulk booking updated\",\n  \"description\": \"Bulk booking updated successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Invalid request payload\",\n  \"description\": \"Please fix the highlighted fields\",\n  \"errors\": {\n    \"status\": [\n      \"Invalid enum value. Expected 'active' | 'paused' | 'cancelled'\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Bulk booking rule not found\",\n  \"description\": \"Bulk booking rule not found\",\n  \"errors\": {}\n}"
+            }
+          ]
         }
       ]
     },
@@ -744,6 +917,98 @@
           }
         },
         {
+          "name": "List Public Routes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "List public routes for the marketing and rider discovery flows. Supports pagination plus optional status and company filters.",
+            "url": "{{baseUrl}}/api/routes?page={{page}}&limit={{limit}}&status={{status}}&companyId={{companyId}}"
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n        \"name\": \"Chevron to Marina\",\n        \"fromName\": \"Chevron\",\n        \"toName\": \"Marina\",\n        \"fromLatitude\": 6.4312,\n        \"fromLongitude\": 3.5351,\n        \"toLatitude\": 6.4488,\n        \"toLongitude\": 3.4019,\n        \"companyId\": null,\n        \"baseTokenCost\": 3,\n        \"status\": \"available\",\n        \"pickupPointsCount\": 4,\n        \"createdAt\": \"2026-03-20T06:00:00.000Z\",\n        \"updatedAt\": \"2026-03-25T06:00:00.000Z\"\n      }\n    ],\n    \"total\": 1\n  },\n  \"message\": \"Routes fetched\",\n  \"description\": \"Public route list retrieved\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Invalid request payload\",\n  \"description\": \"Please fix the highlighted fields\",\n  \"errors\": {\n    \"page\": [\n      \"Number must be greater than or equal to 1\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Public Route Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get one public route with its ordered pickup points.",
+            "url": "{{baseUrl}}/api/routes/{{routeId}}"
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n    \"name\": \"Chevron to Marina\",\n    \"fromName\": \"Chevron\",\n    \"toName\": \"Marina\",\n    \"fromLatitude\": 6.4312,\n    \"fromLongitude\": 3.5351,\n    \"toLatitude\": 6.4488,\n    \"toLongitude\": 3.4019,\n    \"companyId\": null,\n    \"baseTokenCost\": 3,\n    \"status\": \"available\",\n    \"createdAt\": \"2026-03-20T06:00:00.000Z\",\n    \"updatedAt\": \"2026-03-25T06:00:00.000Z\",\n    \"pickupPoints\": [\n      {\n        \"id\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n        \"name\": \"Jakande Roundabout\",\n        \"latitude\": 6.4352,\n        \"longitude\": 3.5402,\n        \"orderIndex\": 1,\n        \"tokenCost\": 3\n      }\n    ]\n  },\n  \"message\": \"Route fetched\",\n  \"description\": \"Public route details retrieved\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Route not found\",\n  \"description\": \"Unable to fetch route\",\n  \"errors\": {}\n}"
+            }
+          ]
+        },
+        {
           "name": "Route Availability",
           "request": {
             "method": "GET",
@@ -755,7 +1020,54 @@
             ],
             "description": "Get route availability snapshot for date.",
             "url": "{{baseUrl}}/api/routes/{{routeId}}/availability?date={{date}}"
-          }
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": [\n    {\n      \"id\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n      \"rideId\": \"TL-1042\",\n      \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n      \"vehicleId\": \"51083d8a-379f-47c5-971d-7e4731db7d2f\",\n      \"rideDate\": \"2026-03-31\",\n      \"departureTime\": null,\n      \"timeSlot\": \"morning\",\n      \"status\": \"scheduled\",\n      \"createdAt\": \"2026-03-27T06:00:00.000Z\",\n      \"updatedAt\": \"2026-03-27T06:00:00.000Z\",\n      \"trips\": [\n        {\n          \"id\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n          \"tripId\": \"TRIP-1042-A\",\n          \"driverTripId\": \"DRV-1042-A\",\n          \"status\": \"scheduled\",\n          \"departureTime\": \"06:30:00\",\n          \"estimatedDurationMinutes\": 65,\n          \"capacity\": 14,\n          \"reservedSeats\": 4,\n          \"availableSeats\": 10\n        }\n      ]\n    }\n  ],\n  \"message\": \"Route availability fetched\",\n  \"description\": \"Route availability retrieved\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Invalid request payload\",\n  \"description\": \"Please fix the highlighted fields\",\n  \"errors\": {\n    \"date\": [\n      \"date query must be in YYYY-MM-DD format\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Route not found\",\n  \"description\": \"Unable to fetch route availability\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Get Ride Instance Details",
@@ -769,7 +1081,54 @@
             ],
             "method": "GET",
             "url": "{{baseUrl}}/api/ride-instances/{{rideInstanceId}}"
-          }
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n    \"rideId\": \"TL-1042\",\n    \"rideDate\": \"2026-03-31\",\n    \"timeSlot\": \"morning\",\n    \"status\": \"scheduled\",\n    \"route\": {\n      \"id\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n      \"name\": \"Chevron to Marina\",\n      \"from_name\": \"Chevron\",\n      \"to_name\": \"Marina\",\n      \"from_latitude\": 6.4312,\n      \"from_longitude\": 3.5351,\n      \"to_latitude\": 6.4488,\n      \"to_longitude\": 3.4019\n    },\n    \"drivers\": [\n      {\n        \"id\": \"29b42e3b-5651-471f-9848-6bbf54fb8b17\",\n        \"driver_trip_id\": \"DRV-1042-A\",\n        \"first_name\": \"Chinedu\",\n        \"last_name\": \"Obi\",\n        \"phone\": \"+2348011111111\",\n        \"email\": \"chinedu@example.com\"\n      }\n    ],\n    \"vehicle\": {\n      \"id\": \"51083d8a-379f-47c5-971d-7e4731db7d2f\",\n      \"registration_number\": \"KSF-245GX\",\n      \"model\": \"Toyota Hiace\",\n      \"capacity\": 14\n    },\n    \"capacity\": 14,\n    \"reservedSeats\": 4,\n    \"availableSeats\": 10,\n    \"trips\": [\n      {\n        \"id\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n        \"tripId\": \"TRIP-1042-A\",\n        \"driverTripId\": \"DRV-1042-A\",\n        \"status\": \"scheduled\",\n        \"departureTime\": \"06:30:00\",\n        \"estimatedDurationMinutes\": 65,\n        \"capacity\": 14,\n        \"reservedSeats\": 4,\n        \"availableSeats\": 10\n      }\n    ],\n    \"pickupPoints\": [\n      {\n        \"id\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n        \"name\": \"Jakande Roundabout\",\n        \"latitude\": 6.4352,\n        \"longitude\": 3.5402,\n        \"orderIndex\": 1,\n        \"tokenCost\": 3\n      }\n    ]\n  },\n  \"message\": \"Ride instance fetched\",\n  \"description\": \"Ride instance retrieved successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Unauthorized",
+              "originalRequest": {},
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Unauthorized\",\n  \"description\": \"Authorization token is required\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Ride instance not found\",\n  \"description\": \"Ride instance not found\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Route Pickup Points (Rider)",
@@ -1649,7 +2008,7 @@
     },
     {
       "name": "Admin Assignments",
-      "description": "Admin assignment endpoints for driver\u2194vehicle and driver\u2194route mapping.",
+      "description": "Admin assignment endpoints for driver↔vehicle and driver↔route mapping.",
       "item": [
         {
           "name": "Assign Driver to Vehicle",
@@ -2065,7 +2424,118 @@
               ]
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n    \"tripId\": \"TRIP-1042-A\",\n    \"driverTripId\": \"DRV-1042-A\",\n    \"status\": \"scheduled\",\n    \"departureTime\": \"06:30:00\",\n    \"estimatedDurationMinutes\": 65,\n    \"capacity\": 14,\n    \"reservedSeats\": 4,\n    \"availableSeats\": 10,\n    \"rideInstance\": {\n      \"id\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n      \"rideId\": \"TL-1042\",\n      \"rideDate\": \"2026-03-31\",\n      \"timeSlot\": \"morning\",\n      \"route\": {\n        \"id\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n        \"name\": \"Chevron to Marina\",\n        \"fromName\": \"Chevron\",\n        \"toName\": \"Marina\",\n        \"fromLat\": 6.4312,\n        \"fromLng\": 3.5351,\n        \"toLat\": 6.4488,\n        \"toLng\": 3.4019\n      }\n    },\n    \"driver\": {\n      \"id\": \"29b42e3b-5651-471f-9848-6bbf54fb8b17\",\n      \"firstName\": \"Chinedu\",\n      \"lastName\": \"Obi\",\n      \"email\": \"chinedu@example.com\",\n      \"phone\": \"+2348011111111\"\n    },\n    \"vehicle\": {\n      \"id\": \"51083d8a-379f-47c5-971d-7e4731db7d2f\",\n      \"registrationNumber\": \"KSF-245GX\",\n      \"model\": \"Toyota Hiace\",\n      \"capacity\": 14\n    },\n    \"pickupPoints\": [\n      {\n        \"id\": \"8bb2bf31-74b8-49d4-a286-d87807fa56da\",\n        \"name\": \"Jakande Roundabout\",\n        \"latitude\": 6.4352,\n        \"longitude\": 3.5402,\n        \"orderIndex\": 1,\n        \"tokenCost\": 3\n      }\n    ],\n    \"realtime\": {\n      \"tripId\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n      \"rideInstanceId\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n      \"driverId\": \"29b42e3b-5651-471f-9848-6bbf54fb8b17\",\n      \"status\": \"scheduled\",\n      \"driverOnline\": false,\n      \"location\": {\n        \"lat\": null,\n        \"lng\": null,\n        \"updatedAt\": null\n      },\n      \"eligibility\": {\n        \"readyToComplete\": false,\n        \"distanceToDestinationMeters\": null,\n        \"updatedAt\": null\n      }\n    }\n  },\n  \"message\": \"Trip fetched\",\n  \"description\": \"Trip details retrieved successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Unauthorized",
+              "originalRequest": {},
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Unauthorized\",\n  \"description\": \"Authorization token is required\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Trip not found\",\n  \"description\": \"Trip not found\",\n  \"errors\": {}\n}"
+            }
+          ]
+        },
+        {
+          "name": "Trip Eligibility",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "description": "Inspect whether an ongoing trip is currently eligible to be completed based on realtime telemetry and destination proximity.",
+            "url": "{{baseUrl}}/api/trips/{{tripId}}/eligibility"
+          },
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"tripId\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n    \"completionEligibility\": {\n      \"eligible\": false,\n      \"readyToComplete\": false,\n      \"nearDestination\": true,\n      \"withinDwellWindow\": false,\n      \"durationThresholdMet\": true,\n      \"gpsFresh\": true,\n      \"distanceToDestinationMeters\": 142,\n      \"lastLocationAt\": \"2026-03-28T08:12:00.000Z\"\n    },\n    \"realtime\": {\n      \"tripId\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n      \"rideInstanceId\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n      \"driverId\": \"29b42e3b-5651-471f-9848-6bbf54fb8b17\",\n      \"status\": \"ongoing\",\n      \"driverOnline\": true,\n      \"location\": {\n        \"lat\": 6.4462,\n        \"lng\": 3.4061,\n        \"updatedAt\": \"2026-03-28T08:12:00.000Z\"\n      },\n      \"eligibility\": {\n        \"readyToComplete\": false,\n        \"distanceToDestinationMeters\": 142,\n        \"updatedAt\": \"2026-03-28T08:12:00.000Z\"\n      }\n    }\n  },\n  \"message\": \"Trip eligibility fetched\",\n  \"description\": \"Trip completion eligibility retrieved successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Forbidden",
+              "originalRequest": {},
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Forbidden\",\n  \"description\": \"You are not allowed to access this trip eligibility\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Not Found",
+              "originalRequest": {},
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Trip not found\",\n  \"description\": \"Trip not found\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Request Boarding (Driver)",
@@ -2129,7 +2599,68 @@
               "raw": "{\n  \"passcode\": \"{{ridePasscode}}\"\n}"
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"bookingId\": \"d693a722-a903-48a0-9262-7e0baacf54e2\",\n    \"bookingStatus\": \"boarded\",\n    \"boardingStatus\": \"approved\",\n    \"boardingExpiresAt\": null,\n    \"boardingVerificationMethod\": \"passcode\"\n  },\n  \"message\": \"Boarding verified\",\n  \"description\": \"Rider passcode verified and boarding completed successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Booking does not belong to this trip\",\n  \"description\": \"Booking does not belong to this trip\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Unauthorized",
+              "originalRequest": {},
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Ride passcode is incorrect\",\n  \"description\": \"Ride passcode is incorrect\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Conflict",
+              "originalRequest": {},
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Boarding request is not active or booking is no longer boardable\",\n  \"description\": \"Boarding request is not active or booking is no longer boardable\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Start Trip (Driver)",
@@ -2155,7 +2686,53 @@
               ]
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n    \"tripId\": \"TRIP-1042-A\",\n    \"driverTripId\": \"DRV-1042-A\",\n    \"rideInstanceId\": \"98e42e2d-6805-46fd-927f-4aa30dc42a16\",\n    \"rideId\": \"TL-1042\",\n    \"routeId\": \"71462dd5-8f63-4fe5-88ca-4d460d7330cc\",\n    \"driverId\": \"29b42e3b-5651-471f-9848-6bbf54fb8b17\",\n    \"vehicleId\": \"51083d8a-379f-47c5-971d-7e4731db7d2f\",\n    \"rideDate\": \"2026-03-31\",\n    \"departureTime\": \"06:30:00\",\n    \"estimatedDurationMinutes\": 65,\n    \"timeSlot\": \"morning\",\n    \"status\": \"ongoing\",\n    \"capacity\": 14,\n    \"reservedSeats\": 4,\n    \"availableSeats\": 10,\n    \"createdAt\": \"2026-03-27T06:00:00.000Z\",\n    \"updatedAt\": \"2026-03-31T06:25:00.000Z\"\n  },\n  \"message\": \"Trip started\",\n  \"description\": \"Trip started successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Forbidden",
+              "originalRequest": {},
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Forbidden\",\n  \"description\": \"Only the assigned driver can start this trip\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Conflict",
+              "originalRequest": {},
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Trip must have an assigned vehicle before it can be started\",\n  \"description\": \"Unable to start trip\",\n  \"errors\": {}\n}"
+            }
+          ]
         },
         {
           "name": "Complete Trip (Driver/Admin)",
@@ -2181,7 +2758,53 @@
               ]
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": false,\n  \"data\": {\n    \"id\": \"3e6cdff1-f76d-4df1-b0f2-6185c4f96988\",\n    \"tripId\": \"TRIP-1042-A\",\n    \"driverTripId\": \"DRV-1042-A\",\n    \"status\": \"completed\",\n    \"departureTime\": \"06:30:00\",\n    \"estimatedDurationMinutes\": 65,\n    \"capacity\": 14,\n    \"reservedSeats\": 4,\n    \"availableSeats\": 10\n  },\n  \"message\": \"Trip completed\",\n  \"description\": \"Trip completed successfully\",\n  \"errors\": {}\n}"
+            },
+            {
+              "name": "Bad Request",
+              "originalRequest": {},
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Invalid request payload\",\n  \"description\": \"Please fix the highlighted fields\",\n  \"errors\": {\n    \"mode\": [\n      \"Invalid enum value. Expected 'normal' | 'override'\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "Conflict",
+              "originalRequest": {},
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"hasError\": true,\n  \"data\": null,\n  \"message\": \"Trip is not eligible for completion\",\n  \"description\": \"Trip completion requirements are not yet satisfied\",\n  \"errors\": {\n    \"completionEligibility\": [\n      \"{\\\"eligible\\\":false,\\\"readyToComplete\\\":false,\\\"nearDestination\\\":true,\\\"withinDwellWindow\\\":false,\\\"durationThresholdMet\\\":true,\\\"gpsFresh\\\":true,\\\"distanceToDestinationMeters\\\":142,\\\"lastLocationAt\\\":\\\"2026-03-28T08:12:00.000Z\\\"}\"\n    ]\n  }\n}"
+            }
+          ]
         },
         {
           "name": "Trip History (Driver/Rider)",

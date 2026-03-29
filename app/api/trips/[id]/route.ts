@@ -65,12 +65,22 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     requireAccessAuth(request, {
-      allowedRoles: ['rider'],
-      forbiddenMessage: 'Only riders can view trip details',
+      allowedRoles: ['rider', 'Driver', 'Admin'],
+      forbiddenMessage: 'Only riders, drivers, and admins can view trip details',
     });
     const { id } = await context.params;
-    const data = await tripsService.getRiderDetails(id);
-    return jsonResponse(data, 'Trip fetched', 'Trip details retrieved successfully');
+    const [data, realtime] = await Promise.all([
+      tripsService.getRiderDetails(id),
+      tripsService.getRealtimeSnapshot(id).catch(() => null),
+    ]);
+    return jsonResponse(
+      {
+        ...data,
+        realtime,
+      },
+      'Trip fetched',
+      'Trip details retrieved successfully'
+    );
   } catch (error) {
     if (error instanceof AppError) {
       const description =

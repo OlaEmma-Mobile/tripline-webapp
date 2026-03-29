@@ -5,13 +5,18 @@ import type {
   CreateDriverInput,
   DriverFilters,
   DriverManifestCountsRow,
-  DriverManifestDetailDTO,
+  DriverManifestPassengerDTO,
   DriverManifestRideRow,
   DriverKycRecordLite,
   DriverRecord,
   DriverVehicleAssignmentProjection,
   UpdateDriverInput,
 } from './drivers.types';
+
+interface DriverManifestPassengerListResult {
+  tripId: string;
+  passengers: DriverManifestPassengerDTO[];
+}
 
 interface CreateDriverPersistInput extends Omit<CreateDriverInput, 'password'> {
   passwordHash: string;
@@ -420,7 +425,7 @@ export class DriversRepository {
   async getManifestDetails(
     driverId: string,
     rideInstanceId: string
-  ): Promise<DriverManifestDetailDTO | null> {
+  ): Promise<DriverManifestPassengerListResult | null> {
     const assignment = await this.getActiveRideAssignmentForDriver(driverId, rideInstanceId);
     if (!assignment) {
       return null;
@@ -464,7 +469,7 @@ export class DriversRepository {
     let { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarded_at, boarding_approved_at, boarding_verified_at, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
       )
       .eq('trip_id', trip.id)
       .order('created_at', { ascending: true })
@@ -476,6 +481,9 @@ export class DriversRepository {
           pickup_point_latitude: number | null;
           pickup_point_longitude: number | null;
           boarding_status: string;
+          boarded_at: string | null;
+          boarding_approved_at: string | null;
+          boarding_verified_at: string | null;
           boarding_expires_at: string | null;
           boarding_verification_method: string | null;
           pickup_point: { id: string; name: string } | null;
@@ -505,6 +513,9 @@ export class DriversRepository {
         pickup_point_latitude: null,
         pickup_point_longitude: null,
         boarding_status: 'none',
+        boarded_at: null,
+        boarding_approved_at: null,
+        boarding_verified_at: null,
         boarding_expires_at: null,
         boarding_verification_method: null,
       }));
@@ -516,29 +527,7 @@ export class DriversRepository {
     }
 
     return {
-      trip: {
-        id: trip.id,
-        tripId: trip.trip_id,
-        driverTripId: assignment.driver_trip_id,
-        rideInstanceId: trip.ride_instance_id,
-        rideId: trip.ride_instance.ride_id,
-        rideDate: trip.ride_instance.ride_date,
-        departureTime: trip.departure_time,
-        estimatedDurationMinutes: trip.estimated_duration_minutes,
-        timeSlot: trip.ride_instance.time_slot,
-        status: trip.status,
-        vehiclePlate: trip.vehicle?.registration_number ?? 'Unknown vehicle',
-        capacity: trip.vehicle?.capacity ?? 0,
-        route: {
-          name: trip.ride_instance.route.name,
-          fromName: trip.ride_instance.route.from_name,
-          toName: trip.ride_instance.route.to_name,
-          fromLat: trip.ride_instance.route.from_latitude,
-          fromLng: trip.ride_instance.route.from_longitude,
-          toLat: trip.ride_instance.route.to_latitude,
-          toLng: trip.ride_instance.route.to_longitude,
-        },
-      },
+      tripId: trip.id,
       passengers: (bookings ?? []).map((booking) => ({
         bookingId: booking.id,
         userId: booking.rider_id,
@@ -549,6 +538,7 @@ export class DriversRepository {
         pickupPointLongitude: booking.pickup_point_longitude,
         bookingStatus: booking.status,
         boardingStatus: booking.boarding_status,
+        boardedAt: booking.boarding_approved_at ?? booking.boarding_verified_at ?? booking.boarded_at,
         boardingExpiresAt: booking.boarding_expires_at,
         boardingVerificationMethod: booking.boarding_verification_method,
       })),
@@ -561,7 +551,7 @@ export class DriversRepository {
   async getManifestDetailsByTrip(
     driverId: string,
     tripId: string
-  ): Promise<DriverManifestDetailDTO | null> {
+  ): Promise<DriverManifestPassengerListResult | null> {
     let { data: trip, error: tripError } = await supabaseAdmin
       .from('trips')
       .select(
@@ -600,7 +590,7 @@ export class DriversRepository {
     let { data: bookings, error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .select(
-        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
+        'id, rider_id, status, pickup_point_latitude, pickup_point_longitude, boarding_status, boarded_at, boarding_approved_at, boarding_verified_at, boarding_expires_at, boarding_verification_method, pickup_point:pickup_points(id, name), rider:users!bookings_rider_id_fkey(first_name, last_name)'
       )
       .eq('trip_id', trip.id)
       .order('created_at', { ascending: true })
@@ -612,6 +602,9 @@ export class DriversRepository {
           pickup_point_latitude: number | null;
           pickup_point_longitude: number | null;
           boarding_status: string;
+          boarded_at: string | null;
+          boarding_approved_at: string | null;
+          boarding_verified_at: string | null;
           boarding_expires_at: string | null;
           boarding_verification_method: string | null;
           pickup_point: { id: string; name: string } | null;
@@ -641,6 +634,9 @@ export class DriversRepository {
         pickup_point_latitude: null,
         pickup_point_longitude: null,
         boarding_status: 'none',
+        boarded_at: null,
+        boarding_approved_at: null,
+        boarding_verified_at: null,
         boarding_expires_at: null,
         boarding_verification_method: null,
       }));
@@ -652,29 +648,7 @@ export class DriversRepository {
     }
 
     return {
-      trip: {
-        id: trip.id,
-        tripId: trip.trip_id,
-        driverTripId: trip.driver_trip_id,
-        rideInstanceId: trip.ride_instance_id,
-        rideId: trip.ride_instance.ride_id,
-        rideDate: trip.ride_instance.ride_date,
-        departureTime: trip.departure_time,
-        estimatedDurationMinutes: trip.estimated_duration_minutes,
-        timeSlot: trip.ride_instance.time_slot,
-        status: trip.status,
-        vehiclePlate: trip.vehicle?.registration_number ?? 'Unknown vehicle',
-        capacity: trip.vehicle?.capacity ?? 0,
-        route: {
-          name: trip.ride_instance.route.name,
-          fromName: trip.ride_instance.route.from_name,
-          toName: trip.ride_instance.route.to_name,
-          fromLat: trip.ride_instance.route.from_latitude,
-          fromLng: trip.ride_instance.route.from_longitude,
-          toLat: trip.ride_instance.route.to_latitude,
-          toLng: trip.ride_instance.route.to_longitude,
-        },
-      },
+      tripId: trip.id,
       passengers: (bookings ?? []).map((booking) => ({
         bookingId: booking.id,
         userId: booking.rider_id,
@@ -685,6 +659,7 @@ export class DriversRepository {
         pickupPointLongitude: booking.pickup_point_longitude,
         bookingStatus: booking.status,
         boardingStatus: booking.boarding_status,
+        boardedAt: booking.boarding_approved_at ?? booking.boarding_verified_at ?? booking.boarded_at,
         boardingExpiresAt: booking.boarding_expires_at,
         boardingVerificationMethod: booking.boarding_verification_method,
       })),

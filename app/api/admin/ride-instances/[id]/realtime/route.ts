@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/features/admin/admin-auth';
-import { rideInstancesRepository } from '@/lib/features/ride-instances/ride-instances.repository';
-import { getFirebaseDb } from '@/lib/firebase/admin';
+import { tripsService } from '@/lib/features/trips/trips.service';
 import { AppError } from '@/lib/utils/errors';
 import { errorResponse, jsonResponse } from '@/lib/utils/responses';
 
@@ -18,27 +17,32 @@ export async function GET(
     requireAdminAuth(request);
     ({ id } = await context.params);
 
-    const snapshot = (await getFirebaseDb().ref(`realtime/rides/${id}`).get()) as {
-      exists(): boolean;
-      val?: () => unknown;
-    };
-    const value = (snapshot.val?.() ?? null) as
-      | {
-          status?: string;
-          driverOnline?: boolean;
-          location?: { lat?: number; lng?: number };
-        }
-      | null;
+    const trips = await tripsService.listByRideInstanceId(id);
+    const activeTrip =
+      trips.find((trip) => trip.status === 'ongoing') ??
+      trips.find((trip) => trip.status === 'scheduled') ??
+      trips[0] ??
+      null;
+
+    const [realtime, completionEligibility] = activeTrip
+      ? await Promise.all([
+          tripsService.getRealtimeSnapshot(activeTrip.id),
+          tripsService.getCompletionEligibility(activeTrip.id).catch(() => null),
+        ])
+      : [null, null];
 
     return jsonResponse(
       {
         rideInstanceId: id,
-        status: value?.status ?? null,
-        driverOnline: value?.driverOnline ?? false,
+        tripId: activeTrip?.id ?? null,
+        status: realtime?.status ?? activeTrip?.status ?? null,
+        driverOnline: realtime?.driverOnline ?? false,
         location: {
-          lat: value?.location?.lat ?? null,
-          lng: value?.location?.lng ?? null,
+          lat: realtime?.location.lat ?? null,
+          lng: realtime?.location.lng ?? null,
+          updatedAt: realtime?.location.updatedAt ?? null,
         },
+        eligibility: completionEligibility,
       },
       'Realtime state fetched',
       'Realtime ride state retrieved successfully'
@@ -52,18 +56,19 @@ export async function GET(
       return errorResponse(error.message, description, error.status);
     }
 
-    const ride = id ? await rideInstancesRepository.getById(id).catch(() => null) : null;
-
     // Graceful fallback so past rides remain monitorable even when Firebase projection is absent/unavailable.
     return jsonResponse(
       {
         rideInstanceId: id,
-        status: ride?.status ?? null,
+        tripId: null,
+        status: null,
         driverOnline: false,
         location: {
           lat: null,
           lng: null,
+          updatedAt: null,
         },
+        eligibility: null,
       },
       'Realtime state unavailable',
       'Realtime data is unavailable for this ride; showing manifest-only view'

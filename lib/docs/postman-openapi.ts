@@ -13,10 +13,20 @@ type PostmanItem = {
     url?: string | { raw?: string };
     body?: { mode?: string; raw?: string };
   };
+  response?: PostmanResponse[];
 };
 
 type PostmanCollection = {
   item?: PostmanItem[];
+};
+
+type PostmanResponse = {
+  name?: string;
+  status?: string;
+  code?: number;
+  body?: string;
+  _postman_previewlanguage?: string;
+  header?: Array<{ key?: string; value?: string }>;
 };
 
 function readCollection(): PostmanCollection | null {
@@ -72,6 +82,64 @@ function inferRequestBody(request: PostmanItem['request']): Record<string, any> 
   };
 }
 
+function inferResponseContentType(response: PostmanResponse): string | undefined {
+  const explicitType = response.header?.find((header) => header.key?.toLowerCase() === 'content-type')?.value;
+  if (explicitType) {
+    return explicitType.split(';')[0]?.trim();
+  }
+
+  if (response._postman_previewlanguage === 'json') {
+    return 'application/json';
+  }
+
+  const body = response.body?.trim();
+  if (!body) return undefined;
+
+  try {
+    JSON.parse(body);
+    return 'application/json';
+  } catch {
+    return 'text/plain';
+  }
+}
+
+function inferResponses(responses: PostmanResponse[] | undefined): Record<string, any> | undefined {
+  if (!responses?.length) return undefined;
+
+  const openApiResponses: Record<string, any> = {};
+
+  for (const response of responses) {
+    const statusCode = String(response.code ?? 200);
+    const contentType = inferResponseContentType(response);
+    const body = response.body?.trim();
+
+    const responseEntry: Record<string, any> = {
+      description: response.status ?? response.name ?? `HTTP ${statusCode} response`,
+    };
+
+    if (contentType && body) {
+      let example: unknown = body;
+      if (contentType === 'application/json') {
+        try {
+          example = JSON.parse(body);
+        } catch {
+          example = body;
+        }
+      }
+
+      responseEntry.content = {
+        [contentType]: {
+          example,
+        },
+      };
+    }
+
+    openApiResponses[statusCode] = responseEntry;
+  }
+
+  return Object.keys(openApiResponses).length > 0 ? openApiResponses : undefined;
+}
+
 function ensureTag(spec: OpenApiDocument, tagName: string) {
   spec.tags = Array.isArray(spec.tags) ? spec.tags : [];
   if (!spec.tags.some((tag: { name?: string }) => tag?.name === tagName)) {
@@ -99,10 +167,37 @@ function walkItems(spec: OpenApiDocument, items: PostmanItem[] | undefined, pare
 
     spec.paths = spec.paths ?? {};
     spec.paths[normalized.path] = spec.paths[normalized.path] ?? {};
+    const postmanRequestBody = inferRequestBody(request);
+    const postmanResponses = inferResponses(item.response);
 
     if (spec.paths[normalized.path][method]) {
       if (!spec.paths[normalized.path][method].description && request?.description) {
         spec.paths[normalized.path][method].description = request.description;
+      }
+      if (!spec.paths[normalized.path][method].requestBody && postmanRequestBody) {
+        spec.paths[normalized.path][method].requestBody = postmanRequestBody;
+      }
+      if (postmanResponses) {
+        spec.paths[normalized.path][method].responses = {
+          ...(spec.paths[normalized.path][method].responses ?? {}),
+          ...Object.fromEntries(
+            Object.entries(postmanResponses).map(([status, response]) => {
+              const existing = spec.paths[normalized.path][method].responses?.[status];
+              if (!existing) {
+                return [status, response];
+              }
+
+              return [
+                status,
+                {
+                  ...existing,
+                  description: existing.description ?? response.description,
+                  content: existing.content ?? response.content,
+                },
+              ];
+            })
+          ),
+        };
       }
       continue;
     }
@@ -127,12 +222,15 @@ function walkItems(spec: OpenApiDocument, items: PostmanItem[] | undefined, pare
       summary: item.name ?? `${method.toUpperCase()} ${normalized.path}`,
       description: request?.description,
       ...(parameters.length > 0 ? { parameters } : {}),
-      ...(inferRequestBody(request) ? { requestBody: inferRequestBody(request) } : {}),
-      responses: {
-        '200': {
-          description: 'Successful response',
-        },
-      },
+      ...(postmanRequestBody ? { requestBody: postmanRequestBody } : {}),
+      responses:
+        postmanResponses && Object.keys(postmanResponses).length > 0
+          ? postmanResponses
+          : {
+              '200': {
+                description: 'Successful response',
+              },
+            },
     };
   }
 }

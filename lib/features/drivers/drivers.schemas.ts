@@ -35,8 +35,9 @@ export const driversQuerySchema = z.object({
 });
 
 export const driverLocationUpdateSchema = z.object({
-  rideInstanceId: z.string().uuid('Ride instance id must be a valid UUID'),
+  tripId: z.string().uuid('Trip id must be a valid UUID'),
   lat: z.number().min(-90, 'Latitude must be >= -90').max(90, 'Latitude must be <= 90'),
   lng: z.number().min(-180, 'Longitude must be >= -180').max(180, 'Longitude must be <= 180'),
   driverOnline: z.boolean().optional().default(true),
+  recordedAt: z.string().datetime().optional(),
 });

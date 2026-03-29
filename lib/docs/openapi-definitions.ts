@@ -397,14 +397,14 @@ export {};
  *           type: string
  *           nullable: true
  *     DriverManifestDetail:
- *       type: object
- *       properties:
- *         trip:
- *           $ref: '#/components/schemas/TripSummary'
- *         passengers:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/DriverManifestPassenger'
+ *       allOf:
+ *         - $ref: '#/components/schemas/RiderTripDetail'
+ *         - type: object
+ *           properties:
+ *             passengers:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/DriverManifestPassenger'
  *     CreateRideInstanceRequest:
  *       type: object
  *       required:
@@ -489,13 +489,415 @@ export {};
  *                   longitude:
  *                     type: number
  *                     nullable: true
+ *     RouteListResponseData:
+ *       type: object
+ *       properties:
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PublicRoute'
+ *         total:
+ *           type: integer
+ *     PublicRoute:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         name:
+ *           type: string
+ *         companyId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         fromName:
+ *           type: string
+ *         fromLatitude:
+ *           type: number
+ *         fromLongitude:
+ *           type: number
+ *         toName:
+ *           type: string
+ *         toLatitude:
+ *           type: number
+ *         toLongitude:
+ *           type: number
+ *         baseTokenCost:
+ *           type: integer
+ *         status:
+ *           type: string
+ *           enum: [available, coming_soon]
+ *         pickupPointsCount:
+ *           type: integer
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     PublicRouteDetail:
+ *       allOf:
+ *         - $ref: '#/components/schemas/PublicRoute'
+ *         - type: object
+ *           properties:
+ *             pickupPoints:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/PickupPoint'
+ *     RouteAvailabilityItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         rideId:
+ *           type: string
+ *         routeId:
+ *           type: string
+ *           format: uuid
+ *         vehicleId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         rideDate:
+ *           type: string
+ *           format: date
+ *         departureTime:
+ *           type: string
+ *           nullable: true
+ *         timeSlot:
+ *           type: string
+ *           enum: [morning, afternoon, evening]
+ *         status:
+ *           type: string
+ *           enum: [scheduled, cancelled]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *         trips:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/TripSummary'
+ *     RiderRideInstanceDetail:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         rideId:
+ *           type: string
+ *         rideDate:
+ *           type: string
+ *           format: date
+ *         timeSlot:
+ *           type: string
+ *           enum: [morning, afternoon, evening]
+ *         status:
+ *           type: string
+ *           enum: [scheduled, cancelled]
+ *         route:
+ *           type: object
+ *           nullable: true
+ *           properties:
+ *             id:
+ *               type: string
+ *               format: uuid
+ *             name:
+ *               type: string
+ *             from_name:
+ *               type: string
+ *             to_name:
+ *               type: string
+ *             from_latitude:
+ *               type: number
+ *             from_longitude:
+ *               type: number
+ *             to_latitude:
+ *               type: number
+ *             to_longitude:
+ *               type: number
+ *         drivers:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               driver_trip_id:
+ *                 type: string
+ *                 nullable: true
+ *               first_name:
+ *                 type: string
+ *               last_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *                 nullable: true
+ *               email:
+ *                 type: string
+ *                 format: email
+ *         vehicle:
+ *           type: object
+ *           nullable: true
+ *           properties:
+ *             id:
+ *               type: string
+ *               format: uuid
+ *             registration_number:
+ *               type: string
+ *             model:
+ *               type: string
+ *               nullable: true
+ *             capacity:
+ *               type: integer
+ *         capacity:
+ *           type: integer
+ *         reservedSeats:
+ *           type: integer
+ *         availableSeats:
+ *           type: integer
+ *         trips:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/TripSummary'
+ *         pickupPoints:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PickupPoint'
+ *     BulkBookingRule:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         riderId:
+ *           type: string
+ *           format: uuid
+ *         routeId:
+ *           type: string
+ *           format: uuid
+ *         pickupPointId:
+ *           type: string
+ *           format: uuid
+ *         timeSlots:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [morning, evening]
+ *         durationType:
+ *           type: string
+ *           enum: [1_week, 2_weeks, 3_weeks, 1_month]
+ *         dayMode:
+ *           type: string
+ *           enum: [custom_days, working_days]
+ *         weekdays:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [mon, tue, wed, thu, fri, sat, sun]
+ *         startDate:
+ *           type: string
+ *           format: date
+ *         endDate:
+ *           type: string
+ *           format: date
+ *         seatCount:
+ *           type: integer
+ *         status:
+ *           type: string
+ *           enum: [active, paused, cancelled, completed]
+ *         lastProcessedDate:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     BulkBookingOccurrence:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         ruleId:
+ *           type: string
+ *           format: uuid
+ *         serviceDate:
+ *           type: string
+ *           format: date
+ *         timeSlot:
+ *           type: string
+ *           enum: [morning, afternoon, evening]
+ *         seatCount:
+ *           type: integer
+ *         tripId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         bookingId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [pending_trip, pending_booking, booked, failed, cancelled, skipped]
+ *         failureReason:
+ *           type: string
+ *           nullable: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     BulkBookingRuleDetail:
+ *       allOf:
+ *         - $ref: '#/components/schemas/BulkBookingRule'
+ *         - type: object
+ *           properties:
+ *             occurrences:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/BulkBookingOccurrence'
+ *     CreateBulkBookingRuleRequest:
+ *       type: object
+ *       required:
+ *         - routeId
+ *         - pickupPointId
+ *         - timeSlots
+ *         - durationType
+ *         - dayMode
+ *         - startDate
+ *         - seatCount
+ *       properties:
+ *         routeId:
+ *           type: string
+ *           format: uuid
+ *         pickupPointId:
+ *           type: string
+ *           format: uuid
+ *         timeSlots:
+ *           type: array
+ *           minItems: 1
+ *           items:
+ *             type: string
+ *             enum: [morning, evening]
+ *         durationType:
+ *           type: string
+ *           enum: [1_week, 2_weeks, 3_weeks, 1_month]
+ *         dayMode:
+ *           type: string
+ *           enum: [custom_days, working_days]
+ *         weekdays:
+ *           type: array
+ *           items:
+ *             type: string
+ *             enum: [mon, tue, wed, thu, fri, sat, sun]
+ *         startDate:
+ *           type: string
+ *           format: date
+ *         seatCount:
+ *           type: integer
+ *           minimum: 1
+ *     UpdateBulkBookingRuleRequest:
+ *       type: object
+ *       required:
+ *         - status
+ *       properties:
+ *         status:
+ *           type: string
+ *           enum: [active, paused, cancelled]
+ *     TripCompletionRequest:
+ *       type: object
+ *       properties:
+ *         mode:
+ *           type: string
+ *           enum: [normal, override]
+ *           default: normal
+ *     TripCompletionEligibility:
+ *       type: object
+ *       properties:
+ *         eligible:
+ *           type: boolean
+ *         readyToComplete:
+ *           type: boolean
+ *         nearDestination:
+ *           type: boolean
+ *         withinDwellWindow:
+ *           type: boolean
+ *         durationThresholdMet:
+ *           type: boolean
+ *         gpsFresh:
+ *           type: boolean
+ *         distanceToDestinationMeters:
+ *           type: number
+ *           nullable: true
+ *         lastLocationAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *     TripRealtimeSnapshot:
+ *       type: object
+ *       properties:
+ *         tripId:
+ *           type: string
+ *           format: uuid
+ *         rideInstanceId:
+ *           type: string
+ *           format: uuid
+ *         driverId:
+ *           type: string
+ *           format: uuid
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [scheduled, awaiting_driver, ongoing, completed, cancelled]
+ *           nullable: true
+ *         driverOnline:
+ *           type: boolean
+ *         location:
+ *           type: object
+ *           properties:
+ *             lat:
+ *               type: number
+ *               nullable: true
+ *             lng:
+ *               type: number
+ *               nullable: true
+ *             updatedAt:
+ *               type: string
+ *               format: date-time
+ *               nullable: true
+ *         eligibility:
+ *           type: object
+ *           properties:
+ *             readyToComplete:
+ *               type: boolean
+ *             distanceToDestinationMeters:
+ *               type: number
+ *               nullable: true
+ *             updatedAt:
+ *               type: string
+ *               format: date-time
+ *               nullable: true
  * tags:
  *   - name: Auth
  *     description: Rider and admin authentication endpoints.
  *   - name: Users
  *     description: Authenticated user profile and ride passcode endpoints.
+ *   - name: Public Routes
+ *     description: Public route discovery and route availability endpoints.
  *   - name: Ride Instances
  *     description: Rider-facing ride template discovery endpoints.
+ *   - name: Bulk Bookings
+ *     description: Recurring rider booking rules and occurrence tracking.
  *   - name: Trips
  *     description: Trip details and driver operational trip actions.
  *   - name: Bookings

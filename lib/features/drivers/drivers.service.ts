@@ -1,6 +1,7 @@
 import { AppError } from '@/lib/utils/errors';
 import { hashPassword } from '@/lib/security/password';
 import { walletRepository } from '@/lib/features/wallet/wallet.repository';
+import { tripsService } from '@/lib/features/trips/trips.service';
 import { driversRepository, DriversRepository } from './drivers.repository';
 import type {
   CreateDriverInput,
@@ -190,11 +191,15 @@ export class DriversService {
     driverId: string,
     rideInstanceId: string
   ): Promise<DriverManifestDetailDTO> {
-    const details = await this.repo.getManifestDetails(driverId, rideInstanceId);
-    if (!details) {
+    const manifest = await this.repo.getManifestDetails(driverId, rideInstanceId);
+    if (!manifest) {
       throw new AppError('Ride instance not found', 404);
     }
-    return details;
+    const trip = await tripsService.getRiderDetails(manifest.tripId);
+    return {
+      ...trip,
+      passengers: manifest.passengers,
+    };
   }
 
   /**
@@ -207,11 +212,15 @@ export class DriversService {
     driverId: string,
     tripId: string
   ): Promise<DriverManifestDetailDTO> {
-    const details = await this.repo.getManifestDetailsByTrip(driverId, tripId);
-    if (!details) {
+    const manifest = await this.repo.getManifestDetailsByTrip(driverId, tripId);
+    if (!manifest) {
       throw new AppError('Trip not found', 404);
     }
-    return details;
+    const trip = await tripsService.getRiderDetails(tripId);
+    return {
+      ...trip,
+      passengers: manifest.passengers,
+    };
   }
 }
 
